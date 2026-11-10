@@ -186,7 +186,9 @@ class OnboardingGateTest {
     private fun decideByIp(
         currentIp: String?,
         lastTriggerIp: String = "",
-        session: UserSession? = null,
+        // 默认给一个已登录会话：否则会被「未登录一律先登录」这条短路吃掉，
+        // 测的就不再是 IP 维度了（该短路另有专门用例覆盖）。
+        session: UserSession? = session(),
         settings: Settings,
         groupConfirmed: Boolean = false,
     ) = OnboardingGate.decideShowOnboarding(
@@ -251,6 +253,35 @@ class OnboardingGateTest {
         assertFalse(
             "新 IP + 已有自有渠道 + 已选模型 → 放行，否则老用户无法退出引导页",
             decideByIp(currentIp = "9.9.9.9", lastTriggerIp = "", session = session(), settings = settings)
+        )
+    }
+
+    /** 未登录是最高优先级：哪怕这个 IP 已经引导过、哪怕探不到 IP，也要先走登录。 */
+    @Test
+    fun `logged out always goes to onboarding`() {
+        val settings = Settings(
+            providers = listOf(userProvider(), officialProvider()),
+            chatModelId = autoModel.id,
+        )
+        assertTrue(
+            "未登录 + IP 已引导过 → 仍然必须进登录",
+            decideByIp(
+                currentIp = "1.1.1.1",
+                lastTriggerIp = "1.1.1.1",
+                session = null,
+                settings = settings,
+                groupConfirmed = true,
+            )
+        )
+        assertTrue(
+            "未登录 + 探测失败 → 仍然必须进登录",
+            decideByIp(
+                currentIp = null,
+                lastTriggerIp = "1.1.1.1",
+                session = null,
+                settings = settings,
+                groupConfirmed = true,
+            )
         )
     }
 }

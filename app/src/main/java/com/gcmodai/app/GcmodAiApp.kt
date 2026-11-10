@@ -1,11 +1,13 @@
 package com.gcmodai.app
 
 import android.app.Application
+import android.content.ComponentCallbacks2
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.util.Log
 import android.widget.Toast
+import coil3.SingletonImageLoader
 import androidx.compose.foundation.ComposeFoundationFlags
 import androidx.compose.runtime.Composer
 import androidx.compose.runtime.tooling.ComposeStackTraceMode
@@ -302,6 +304,22 @@ class GcmodAiApp : Application() {
             .setShowBadge(false)
             .build()
         notificationManager.createNotificationChannel(memoryDreamChannel)
+    }
+
+    /**
+     * 系统内存吃紧 / 退到后台时，把可以重建的缓存全部丢掉。
+     *
+     * 图片缓存是这里的大头（一张 4K 截图解码后约 33MB），长会话里很容易堆到几百 MB；
+     * 它随时能从磁盘缓存或网络重建，所以是最该先扔的东西。
+     * 注意只清内存缓存，不碰磁盘缓存，否则用户会看到图片重新加载。
+     */
+    override fun onTrimMemory(level: Int) {
+        super.onTrimMemory(level)
+        if (level >= ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW) {
+            runCatching {
+                SingletonImageLoader.get(this).memoryCache?.clear()
+            }.onFailure { Log.w(TAG, "clear image memory cache failed", it) }
+        }
     }
 
     override fun onTerminate() {

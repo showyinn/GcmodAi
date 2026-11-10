@@ -26,8 +26,8 @@ android {
         applicationId = "com.gcmodai.app"
         minSdk = 26
         targetSdk = 37
-        versionCode = 242
-        versionName = "3.9.7"
+        versionCode = 243
+        versionName = "3.9.8"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -79,6 +79,13 @@ android {
             optimization {
                 enable = true
             }
+            // 浠ｇ爜鍘嬬缉 + 璧勬簮鍘嬬缉锛歮anifest/浠ｇ爜閲屾病鐢ㄥ埌鐨勮祫婧愶紙鍥剧墖銆佸竷灞€銆佸瓧绗︿覆锛夌洿鎺ヤ笉鎵撳寘
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
             buildConfigField("String", "VERSION_NAME", "\"${android.defaultConfig.versionName}\"")
             buildConfigField("String", "VERSION_CODE", "\"${android.defaultConfig.versionCode}\"")
         }
@@ -88,8 +95,8 @@ android {
             buildConfigField("String", "VERSION_CODE", "\"${android.defaultConfig.versionCode}\"")
         }
     }
-    // 按分发渠道区分：github 是 GitHub Release / 每日构建的 APK，play 是上架 Google Play 的 AAB
-    // 两个渠道共用同一个 applicationId，Play 版不能自更新，相关入口通过 BuildConfig.IS_PLAY_STORE 关闭
+    // 鎸夊垎鍙戞笭閬撳尯鍒嗭細github 鏄?GitHub Release / 姣忔棩鏋勫缓鐨?APK锛宲lay 鏄笂鏋?Google Play 鐨?AAB
+    // 涓や釜娓犻亾鍏辩敤鍚屼竴涓?applicationId锛孭lay 鐗堜笉鑳借嚜鏇存柊锛岀浉鍏冲叆鍙ｉ€氳繃 BuildConfig.IS_PLAY_STORE 鍏抽棴
     flavorDimensions += "distribution"
     productFlavors {
         create("github") {
@@ -115,16 +122,31 @@ android {
     }
     androidResources {
         generateLocaleConfig = true
-        // 只保留 app 自己翻译过的语言，依赖库（AndroidX、GMS 等）带的其他语言资源不打包
-        localeFilters += listOf("en", "ar", "de", "ja", "ko", "ko-rKR", "ru", "zh", "zh-rTW")
+        // 鍙繚鐣欎富骞茶瑷€锛氬涓€濂楄瑷€灏卞涓€浠?strings/plurals/arrays锛?
+        // 鏈鐩栫殑璇█鑷姩鍥炶惤鍒伴粯璁わ紙鑻辨枃锛変笌涓枃锛屼笉浼氬嚭鐜扮┖鐧界晫闈?
+        localeFilters += listOf("en", "zh", "zh-rTW")
     }
     packaging {
         jniLibs {
             useLegacyPackaging = true
         }
         resources {
-            // BouncyCastle 的 Picnic 后量子签名查找表（约 1.2MB），JSch 用不到
+            // BouncyCastle 鐨?Picnic 鍚庨噺瀛愮鍚嶆煡鎵捐〃锛堢害 1.2MB锛夛紝JSch 鐢ㄤ笉鍒?
             excludes += "org/bouncycastle/pqc/crypto/picnic/**"
+            // 渚濊禆搴撳杩涙潵浣嗚繍琛屾椂鐢ㄤ笉鍒扮殑鍏冩暟鎹細鍙湁鏋勫缓鏈熶环鍊?
+            excludes += "META-INF/*.version"
+            excludes += "META-INF/*.kotlin_module"
+            excludes += "META-INF/*.kotlin_builtins"
+            excludes += "META-INF/versions/9/OSGI-INF/**"
+            excludes += "META-INF/DEPENDENCIES"
+            excludes += "META-INF/LICENSE*"
+            excludes += "META-INF/NOTICE*"
+            excludes += "kotlin/**"
+            // kotlinx-coroutines 鐨勮皟璇曟帰閽堬紝release 涓嶉渶瑕?
+            excludes += "DebugProbesKt.bin"
+            // 搴撹嚜甯︾殑鏂囨。/绀轰緥
+            excludes += "**/*.md"
+            excludes += "**/README*"
         }
     }
     tasks.withType<KotlinCompile>().configureEach {
@@ -142,13 +164,13 @@ android {
     }
 }
 
-// 两个渠道的启动路径一样，profile 合并到 src/main 共用，不按变体各存一份
+// 涓や釜娓犻亾鐨勫惎鍔ㄨ矾寰勪竴鏍凤紝profile 鍚堝苟鍒?src/main 鍏辩敤锛屼笉鎸夊彉浣撳悇瀛樹竴浠?
 baselineProfile {
     mergeIntoMain = true
 }
 
-// baselineprofile 插件按 release 复制出 nonMinifiedRelease 时只关掉 isMinifyEnabled，关不掉 optimization，
-// 不手动关的话生成用的包会被 R8 内联、合并类，profile 里记下的是优化后的类和方法
+// baselineprofile 鎻掍欢鎸?release 澶嶅埗鍑?nonMinifiedRelease 鏃跺彧鍏虫帀 isMinifyEnabled锛屽叧涓嶆帀 optimization锛?
+// 涓嶆墜鍔ㄥ叧鐨勮瘽鐢熸垚鐢ㄧ殑鍖呬細琚?R8 鍐呰仈銆佸悎骞剁被锛宲rofile 閲岃涓嬬殑鏄紭鍖栧悗鐨勭被鍜屾柟娉?
 androidComponents {
     finalizeDsl { extension ->
         extension.buildTypes.findByName("nonMinifiedRelease")?.optimization?.enable = false
@@ -176,8 +198,8 @@ kotlin {
     }
 }
 
-// kotlin-reflect 只由 ktor-server-core 传递引入，用到它的只有按配置加载模块、开发模式热重载等用不到的路径。
-// 它在 classpath 上时 stdlib 的 Reflection 会 Class.forName 加载 ReflectionFactoryImpl，R8 因此保留整个实现（约 0.7MB dex）
+// kotlin-reflect 鍙敱 ktor-server-core 浼犻€掑紩鍏ワ紝鐢ㄥ埌瀹冪殑鍙湁鎸夐厤缃姞杞芥ā鍧椼€佸紑鍙戞ā寮忕儹閲嶈浇绛夌敤涓嶅埌鐨勮矾寰勩€?
+// 瀹冨湪 classpath 涓婃椂 stdlib 鐨?Reflection 浼?Class.forName 鍔犺浇 ReflectionFactoryImpl锛孯8 鍥犳淇濈暀鏁翠釜瀹炵幇锛堢害 0.7MB dex锛?
 configurations.matching { it.name.endsWith("RuntimeClasspath") }.configureEach {
     exclude(group = "org.jetbrains.kotlin", module = "kotlin-reflect")
 }
@@ -199,7 +221,7 @@ dependencies {
     implementation(libs.androidx.browser)
     implementation(libs.androidx.profileinstaller)
     implementation(libs.termux.terminal.view) {
-        // terminal-emulator 由仓库内的 :terminal 模块提供, 不再引入上游 aar
+        // terminal-emulator 鐢变粨搴撳唴鐨?:terminal 妯″潡鎻愪緵, 涓嶅啀寮曞叆涓婃父 aar
         exclude(group = "com.termux.termux-app", module = "terminal-emulator")
     }
     implementation(libs.guava.listenablefuture)
@@ -326,7 +348,7 @@ dependencies {
     // jmDNS (mDNS/Bonjour for .local hostname)
     implementation(libs.jmdns)
 
-    // SLF4J Android binding — routes Ktor/SLF4J logs to logcat
+    // SLF4J Android binding 鈥?routes Ktor/SLF4J logs to logcat
     implementation(libs.slf4j.api)
     implementation(libs.slf4j.android)
 

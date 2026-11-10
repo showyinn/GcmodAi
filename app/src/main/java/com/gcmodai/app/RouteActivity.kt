@@ -53,12 +53,15 @@ import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
 import coil3.ImageLoader
 import coil3.compose.setSingletonImageLoaderFactory
+import coil3.disk.DiskCache
+import coil3.memory.MemoryCache
 import coil3.gif.AnimatedImageDecoder
 import coil3.gif.GifDecoder
 import coil3.network.cachecontrol.CacheControlCacheStrategy
 import coil3.network.okhttp.OkHttpNetworkFetcherFactory
 import coil3.request.crossfade
 import coil3.svg.SvgDecoder
+import okio.Path.Companion.toOkioPath
 import com.gcmodai.ui.toast.Toaster
 import com.gcmodai.ui.toast.rememberToasterState
 import kotlinx.coroutines.launch
@@ -221,6 +224,20 @@ class RouteActivity : ComponentActivity() {
                 setSingletonImageLoaderFactory { context ->
                     ImageLoader.Builder(context)
                         .crossfade(true)
+                        // 图片缓存给死上限：内存 20% 堆、磁盘 160MB。
+                        // 默认值在长会话（大量头像/截图/图表）里会一路吃到 OOM 边缘，
+                        // 这里主动收口，超出部分交给 LRU 淘汰。
+                        .memoryCache {
+                            MemoryCache.Builder()
+                                .maxSizePercent(context, 0.20)
+                                .build()
+                        }
+                        .diskCache {
+                            DiskCache.Builder()
+                                .directory(context.cacheDir.resolve("image_cache").toOkioPath())
+                                .maxSizeBytes(160L * 1024 * 1024)
+                                .build()
+                        }
                         .components {
                             add(
                                 OkHttpNetworkFetcherFactory(
