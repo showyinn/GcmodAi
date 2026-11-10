@@ -413,19 +413,26 @@ https://gcmod.online/download/<apk>   →   http://38.76.219.151/<apk>
 - 强调色全部取站点令牌（该站 `--primary: 0 0% 9%` 是黑白主题，所以卡片也是黑/白，不掺品牌色）；
 - **整张卡片可收起**：右上角「收起 / 展开」按钮，整行标题也可点；收起后只剩一行，状态写 `localStorage`；
 - 卡片 `position: relative` 常驻文档流，**不悬浮、不固定、不遮挡**下面的令牌表格；
+- **手机端专门处理**（手机上没有 `<table>`）：
+  - 令牌页在小屏渲染的是 `.token-mobile-card-list`，桌面表格仍在 DOM 里但被隐藏。
+    锚点只认**可见**容器（`isVisible()` + 五级降级：数据卡 → 表格 → 移动列表 → 标题文本 → 页面首块），
+    插进去之前还会自检，发现整块不可见就换锚点重挂；
+  - 卡片 `flex: 0 0 auto` + `max-width: 100%` + `overflow-x: clip`，在「定高 flex 列」布局里不会被压成 0 高、也不横向溢出；
+  - 手机上三个下载按钮按内容宽度换行（站点给 `.token-action-button` 设了 `flex: 1`，不覆盖就会被压成一行顶出屏幕）；
+  - 监听 `resize` / `orientationchange` / `matchMedia(max-width:768px)`，手机↔桌面切换后重新计算锚点；
 - **更新日志不截断**：每个版本是独立可折叠条目，默认只展开最新版；日志区限高
   `min(56vh, 420px)` 独立滚动，常显细滚动条；底部提示随内容滚动（不再是 `sticky`，不会压住最后一行）；
   展开时把内层 `scrollTop` 归零（否则浏览器焦点滚动会把内容顶到中间，看起来像被截）；
 - 数据优先读同源 `app-info.json?t=<时间戳>`（绕开 CDN 边缘缓存），失败用脚本内置兜底值，**永不阻塞页面**；
-- 被 React 重新渲染带走时由 `MutationObserver` 自动补回；
+- 被 React 重新渲染带走、或被挪进隐藏容器时，由 `MutationObserver`（含 `class` / `style` / `hidden` 变化）自动补回；
 - 改动前自动备份 `index.html.bak-appcard-<时间戳>`，回滚只需还原该文件。
 
 本地回归（无需登录线上站，用 Edge headless 跑真实 DOM；harness 直接引入站点真实 CSS，截图即所见）：
 
 ```bash
 python deploy/fetch_site_css.py   # 抓站点 CSS 到 harness，保证还原度
-python deploy/test_app_card.py    # 有表格 / 无表格 / 非令牌页 / 折叠交互 四个场景
-python deploy/shot_app_card.py    # 出亮色 / 暗色 / 日志展开 / 折叠 四张截图
+python deploy/test_app_card.py    # 桌面有表格 / 无表格 / 非令牌页 / 折叠 / 手机两种布局 / 桌面复核，共 7 项
+python deploy/shot_app_card.py    # 亮色 / 暗色 / 日志展开 / 折叠 / 390px 手机，共 5 张
 ```
 
 ---
