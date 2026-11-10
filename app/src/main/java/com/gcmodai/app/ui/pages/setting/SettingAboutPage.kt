@@ -210,24 +210,25 @@ fun SettingAboutPage() {
                             supportingContent = { Text("https://gcmod.online") },
                             headlineContent = { Text(stringResource(R.string.about_page_website)) },
                         )
-                        item(
-                            onClick = { context.openUrl("https://github.com/112201844/GcmodAi") },
-                            leadingContent = { CardGroupIcon(HugeIcons.Github, containerColor = containerColor, contentColor = contentColor) },
-                            supportingContent = { Text("https://github.com/112201844/GcmodAi") },
-                            headlineContent = { Text(stringResource(R.string.about_page_github)) },
-                        )
-                        item(
-                            onClick = { context.openUrl("https://github.com/112201844/GcmodAi/blob/main/LICENSE") },
-                            leadingContent = { CardGroupIcon(HugeIcons.File02, containerColor = containerColor, contentColor = contentColor) },
-                            supportingContent = { Text("https://github.com/112201844/GcmodAi/blob/main/LICENSE") },
-                            headlineContent = { Text(stringResource(R.string.about_page_license)) },
-                        )
-                        // 源码镜像：GitHub 账号若被风控，用户仍能拿到完整源码
+                        // 源码镜像放在第一位：未登录 GitHub 的访客访问仓库会 404，
+                        // 镜像站是所有人（含未登录）都能打开的公开发布口。
                         item(
                             onClick = { context.openUrl("http://38.76.219.151/opensource/") },
                             leadingContent = { CardGroupIcon(HugeIcons.Download01, containerColor = containerColor, contentColor = contentColor) },
-                            supportingContent = { Text("GitHub 打不开时，从这里下源码快照") },
+                            supportingContent = { Text("公开可访问 · 源码快照与安装包") },
                             headlineContent = { Text("源码镜像下载") },
+                        )
+                        item(
+                            onClick = { context.openUrl("https://github.com/112201844/GcmodAi") },
+                            leadingContent = { CardGroupIcon(HugeIcons.Github, containerColor = containerColor, contentColor = contentColor) },
+                            supportingContent = { Text("github.com/112201844/GcmodAi（需登录 GitHub 才能浏览）") },
+                            headlineContent = { Text(stringResource(R.string.about_page_github)) },
+                        )
+                        item(
+                            onClick = { context.openUrl("http://38.76.219.151/opensource/LICENSE") },
+                            leadingContent = { CardGroupIcon(HugeIcons.File02, containerColor = containerColor, contentColor = contentColor) },
+                            supportingContent = { Text("AGPL-3.0 全文") },
+                            headlineContent = { Text(stringResource(R.string.about_page_license)) },
                         )
                         // AGPL-3.0 要求保留来源：把上游项目明确列出来
                         item(
