@@ -381,21 +381,35 @@ python deploy/deploy_app_card.py
 
 ### 控制台令牌页的 App 卡片
 
-`https://gcmod.online/console/token` 顶部有一张「GcmodAi 客户端」卡片：版本号、三个 ABI 下载按钮、
-SHA256、可展开的更新日志。它**不是**改 SPA 源码，而是在页面里注入一个独立脚本：
+`https://gcmod.online/console/token` 顶部有一张「GcmodAi 客户端」卡片：品牌图标、版本胶囊、「最新」标记、
+参数 chips、三个 ABI 的下载按钮、SHA256 一键复制、可上下滑动的更新日志时间线。
+它**不是**改 SPA 源码，而是在页面里注入一个独立脚本：
 
 | 件 | 位置 | 作用 |
 |---|---|---|
 | `gcmodai-app-download.js` | `/custom-ui/gcmodai-app-download.js` | 只在 `/console/token` 路由渲染卡片 |
 | `app-info.json` | 站点根（同源） | 版本 / 下载地址 / SHA256 / 历史日志 |
-| 一行 `<script defer>` | `smai-spa/index.html` 的 `</head>` 前 | 加载上面那个脚本 |
+| 一行 `<script defer>` | `smai-parity-root/smai-spa/index.html` 的 `</head>` 前 | 加载上面那个脚本 |
+
+**安装包必须走本站 HTTPS**。`38.76.219.151` 只有 HTTP，而控制台是 HTTPS，
+在 HTTPS 页面上点 `http://` 直链会被浏览器判为**不安全下载并直接拦截**
+（Chrome / Edge：「无法安全下载 …apk」）。因此加了同源反代：
+
+```
+https://gcmod.online/download/<apk>   →   http://38.76.219.151/<apk>
+```
+
+配套两件事：`.apk` 在下载站声明为 `application/vnd.android.package-archive`；
+反代关闭 `proxy_buffering` 并保留 `Range`，断点续传正常（206）。实测公网完整下载
+19,120,042 字节、SHA256 与页面标注一致、约 2.2 MB/s。
 
 设计约束（保证「不影响原有 UI」）：
 
 - 只在 `location.pathname` 命中 `/console/token` 时插入，其它路由不产生任何 DOM；
 - 样式全部走站点已有的 shadcn 令牌 `--card / --border / --radius / --primary / --muted-foreground`，
   亮色暗色自动跟随，不引入新配色；
-- 数据优先读同源 `/app-info.json`，读不到用脚本内置兜底值，**任何情况都不会阻塞页面**；
+- 更新日志限高 `min(44vh, 336px)` 独立滚动，上下渐隐 + 细滚动条，长历史也不撑高页面；
+- 数据优先读同源 `app-info.json?t=<时间戳>`（绕开 CDN 边缘缓存），失败用脚本内置兜底值，**永不阻塞页面**；
 - 被 React 重新渲染带走时由 `MutationObserver` 自动补回；
 - 改动前自动备份 `index.html.bak-appcard-<时间戳>`，回滚只需还原该文件。
 
