@@ -388,6 +388,7 @@ python deploy/deploy_app_card.py
 | 件 | 位置 | 作用 |
 |---|---|---|
 | `gcmodai-app-download.js` | `/custom-ui/gcmodai-app-download.js` | 只在 `/console/token` 路由渲染卡片 |
+| `gcmodai-app-icon.png`（192 / @2x 384 / 48） | `/custom-ui/` | 卡片左上角的 App 图标，保留原图圆角透明 |
 | `app-info.json` | 站点根（同源） | 版本 / 下载地址 / SHA256 / 历史日志 |
 | 一行 `<script defer>` | `smai-parity-root/smai-spa/index.html` 的 `</head>` 前 | 加载上面那个脚本 |
 
