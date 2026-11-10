@@ -1,0 +1,159 @@
+package com.gcmodai.app.data.ai.tools
+
+import android.content.Context
+import android.util.Log
+import kotlinx.serialization.json.jsonObject
+import com.gcmodai.ai.core.Tool
+import com.gcmodai.ai.provider.BuiltInTools
+import com.gcmodai.ai.provider.Model
+import com.gcmodai.ai.ui.UIMessagePart
+import com.gcmodai.app.data.ai.mcp.McpManager
+import com.gcmodai.app.data.ai.tools.local.LocalTools
+import com.gcmodai.app.data.datastore.Settings
+import com.gcmodai.app.data.files.FileFolders
+import com.gcmodai.app.data.model.Assistant
+import com.gcmodai.app.data.repository.ConversationRepository
+import com.gcmodai.app.data.repository.MemoryRepository
+import com.gcmodai.app.data.repository.WorkspaceRepository
+import com.gcmodai.app.data.repository.memoryId
+import com.gcmodai.app.data.skills.SkillManager
+import com.gcmodai.workspace.WorkspaceShellStatus
+import java.io.File
+import kotlin.uuid.Uuid
+
+private const val TAG = "ChatToolFactory"
+private const val MAX_TOOL_OUTPUT_CHARS = 32 * 1024
+private const val TOOL_OUTPUT_PREVIEW_CHARS = 4 * 1024
+
+// 搜索结果的体积由用户设置的结果数决定，且结果列表 UI 与引用跳转都依赖完整的 JSON 结构，不参与截断
+private val TOOLS_WITHOUT_OUTPUT_TRUNCATION = setOf("search_web")
+
+internal fun shouldUseExternalWebSearch(assistant: Assistant, model: Model): Boolean {
+    return assistant.enableWebSearch && BuiltInTools.Search !in model.tools
+}
+
+class InvalidMcpServerNamesException(val names: List<String>) :
+    IllegalStateException("Invalid MCP server names: ${names.joinToString(", ")}")
+
+/** Creates the complete tool set for one generation run, including approval resumption. */
+class ChatToolFactory(
+    private val context: Context,
+    private val memoryRepository: MemoryRepository,
+    private val conversationRepository: ConversationRepository,
+    private val localTools: LocalTools,
+    private val mcpManager: McpManager,
+    private val skillManager: SkillManager,
+    private val workspaceRepository: WorkspaceRepository,
+) {
+    suspend fun createTools(
+        settings: Settings,
+        assistant: Assistant,
+        model: Model,
+        workspaceCwd: String? = null,
+    ): List<Tool> {
+        val workspaceTools = createWorkspaceToolsIfReady(assistant.workspaceId?.toString(), workspaceCwd)
+        val tools = buildList {
+            if (assistant.enableMemory) {
+                addAll(buildMemoryTools(memoryRepository, assistant.memoryId))
+            }
+            if (shouldUseExternalWebSearch(assistant, model)) {
+                addAll(createSearchTools(settings))
+            }
+            addAll(localTools.getTools(assistant.localTools))
+            if (assistant.enableRecentChatsReference) {
+                addAll(createConversationTools(conversationRepository, assistant.id))
+            }
+            addAll(workspaceTools)
+            if (assistant.enabledSkills.isNotEmpty()) {
+                addAll(
+                    createSkillTools(
+                        enabledSkills = assistant.enabledSkills,
+                        allSkills = skillManager.listSkills(),
+                    )
+                )
+            }
+
+            val mcpTools = mcpManager.getAllAvailableTools(assistant)
+            val invalidNames = mcpTools
+                .map { it.second }
+                .distinct()
+                .filter { name -> name.isEmpty() || !name.all { it in 'a'..'z' || it in 'A'..'Z' || it in '0'..'9' } }
+            if (invalidNames.isNotEmpty()) {
+                throw InvalidMcpServerNamesException(invalidNames)
+            }
+            mcpTools.forEach { (serverId, serverName, tool) ->
+                add(
+                    Tool(
+                        name = "mcp__${serverName}__${tool.name}",
+                        description = tool.description ?: "",
+                        parameters = { tool.inputSchema },
+                        needsApproval = { tool.needsApproval },
+                        execute = { mcpManager.callTool(serverId, tool.name, it.jsonObject) },
+                    )
+                )
+            }
+        }
+        // 过长的输出存成文件让模型用 shell 按需读取；没有 shell 时模型读不到文件，只能原样返回。
+        // 文件放在本机, 只有本地 Rootfs 挂载了 /tool_outputs, 远程工作区同样读不到
+        val canReadToolOutputs = workspaceTools.isNotEmpty() &&
+            assistant.workspaceId?.let { workspaceRepository.getById(it.toString()) }?.capabilities()?.rootfs == true
+
+        // 诊断：把最终交给模型的工具名打出来。
+        // 之前排查「AI 说读不了工作区」时，因为没有这行日志，
+        // 无法判断是工具没装上、还是模型没调用——现在一眼可查。
+        val workspaceRelated = tools.map { it.name }.filter {
+            it.startsWith("ws_") || it.startsWith("ssh_")
+        }
+        Log.i(
+            TAG,
+            "createTools: total=${tools.size}, workspace/ssh=$workspaceRelated, " +
+                "assistantLocalTools=${assistant.localTools}"
+        )
+
+        return if (canReadToolOutputs) tools.map(::withOutputTruncation) else tools
+    }
+
+    private fun withOutputTruncation(tool: Tool): Tool {
+        if (tool.name in TOOLS_WITHOUT_OUTPUT_TRUNCATION) return tool
+        val execute = tool.execute
+        return tool.copy(execute = { truncateOutput(execute(it)) })
+    }
+
+    private fun truncateOutput(output: List<UIMessagePart>): List<UIMessagePart> {
+        val textParts = output.filterIsInstance<UIMessagePart.Text>()
+        val totalChars = textParts.sumOf { it.text.length }
+        if (totalChars <= MAX_TOOL_OUTPUT_CHARS) return output
+
+        val fileName = "${Uuid.random()}.txt"
+        Log.i(TAG, "truncateOutput: saving $totalChars chars to $fileName")
+        val fullText = textParts.joinToString("\n") { it.text }
+        val outputDir = File(context.filesDir, FileFolders.TOOL_OUTPUTS).apply { mkdirs() }
+        File(outputDir, fileName).writeText(fullText)
+
+        return listOf(
+            UIMessagePart.Text(
+                buildString {
+                    appendLine("[Tool output truncated: $totalChars characters total]")
+                    appendLine("Full output saved to: /tool_outputs/$fileName")
+                    appendLine("Use shell to read: `cat /tool_outputs/$fileName`")
+                    appendLine("Use shell to search: `grep \"pattern\" /tool_outputs/$fileName`")
+                    appendLine()
+                    append(fullText.take(TOOL_OUTPUT_PREVIEW_CHARS))
+                }
+            )
+        ) + output.filter { it !is UIMessagePart.Text }
+    }
+
+    private suspend fun createWorkspaceToolsIfReady(workspaceId: String?, cwd: String?): List<Tool> {
+        if (workspaceId.isNullOrBlank()) return emptyList()
+        val workspace = workspaceRepository.getById(workspaceId) ?: return emptyList()
+        if (workspace.shellStatus != WorkspaceShellStatus.READY.name) {
+            Log.d(
+                TAG,
+                "createWorkspaceToolsIfReady: skip workspace tools, workspace=$workspaceId, status=${workspace.shellStatus}"
+            )
+            return emptyList()
+        }
+        return createWorkspaceTools(workspaceId, workspaceRepository, cwd)
+    }
+}
