@@ -36,7 +36,7 @@ data class RemoteConfig(
     val announcementTitle: String = "公告",
     val announcementEnabled: Boolean = false,
     val latestVersion: String = "",
-    val downloadUrl: String = "http://38.76.219.151/",
+    val downloadUrl: String = "https://gcmod.bond/",
     val forceUpdate: Boolean = false,
     val updateCheckEnabled: Boolean = true,
     val supportContact: String = "",
@@ -194,7 +194,7 @@ class RemoteConfigRepository(
 
     companion object {
         /** 配置服务部署在下载站同一台机器上，走它的 nginx。 */
-        const val BASE_URL = "http://38.76.219.151"
+        const val BASE_URL = "https://gcmod.bond"
         private const val USER_AGENT = "GcmodAi/RemoteConfig"
     }
 }

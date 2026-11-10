@@ -1,7 +1,7 @@
 # GcmodAi
 
-> **仓库：https://github.com/tmmichaelwonghbhm/GcmodAi** ｜ **官网：https://gcmod.online/** ｜ **下载：http://38.76.219.151/**
-> 源码镜像（含源码快照 / LICENSE / Windows 助手）：http://38.76.219.151/opensource/
+> **仓库：https://github.com/tmmichaelwonghbhm/GcmodAi** ｜ **官网：https://gcmod.online/** ｜ **下载：https://gcmod.bond/**
+> 源码镜像（含源码快照 / LICENSE / Windows 助手）：https://gcmod.bond/opensource/
 
 一个把「AI 写代码」做成闭环的 Android 客户端：
 AI 不只会给你一段代码，它会**把文件写进真实的工作区**，然后回你一个**能打开的网址**；
@@ -293,7 +293,7 @@ AI 不只会给你一段代码，它会**把文件写进真实的工作区**，�
 
 ## 管理后台 36 项配置
 
-访问 `http://38.76.219.151/admin`，管理员密码登录（role ≥ 10）。
+访问 `https://gcmod.bond/admin`，管理员密码登录（role ≥ 10）。
 配置定义在服务端，页面按 schema **动态渲染**，新增配置项无需改前端。
 
 ### 公告（3）
@@ -386,13 +386,16 @@ python deploy/deploy_app_card.py
 | `app-info.json` | 站点根（同源） | 版本 / 下载地址 / SHA256 / 历史日志 |
 | 一行 `<script defer>` | `smai-parity-root/smai-spa/index.html` 的 `</head>` 前 | 加载上面那个脚本 |
 
-**安装包必须走本站 HTTPS**。`38.76.219.151` 只有 HTTP，而控制台是 HTTPS，
-在 HTTPS 页面上点 `http://` 直链会被浏览器判为**不安全下载并直接拦截**
-（Chrome / Edge：「无法安全下载 …apk」）。因此加了同源反代：
+**下载站现在自带 HTTPS**：https://gcmod.bond/ 与 https://gcmod.online/download/ 都是同源 HTTPS，
+浏览器不会再拦「无法安全下载」。两个地址指向同一份 APK，任一处挂掉另一处仍可用：
 
 ```
-https://gcmod.online/download/<apk>   →   http://38.76.219.151/<apk>
+https://gcmod.online/download/<apk>   →   https://gcmod.bond/<apk>
 ```
+
+证书由 Let's Encrypt 签发（`certbot` + webroot，`certbot.timer` 自动续期）：
+`gcmod.bond` 的 80 只放行 `/.well-known/acme-challenge/`，其余 301 到 443；直接访问 IP
+同样 301 到 `https://gcmod.bond/`，全站不再有明文入口。
 
 配套两件事：`.apk` 在下载站声明为 `application/vnd.android.package-archive`；
 反代关闭 `proxy_buffering` 并保留 `Range`，断点续传正常（206）。实测公网完整下载
@@ -502,4 +505,4 @@ netsh advfirewall firewall add rule name="GcmodAi Agent" dir=in action=allow pro
 
 ---
 
-**官网 [https://gcmod.online/](https://gcmod.online/)** ｜ **下载 [http://38.76.219.151/](http://38.76.219.151/)** ｜ **源码镜像 [http://38.76.219.151/opensource/](http://38.76.219.151/opensource/)**
+**官网 [https://gcmod.online/](https://gcmod.online/)** ｜ **下载 [https://gcmod.bond/](https://gcmod.bond/)** ｜ **源码镜像 [https://gcmod.bond/opensource/](https://gcmod.bond/opensource/)**

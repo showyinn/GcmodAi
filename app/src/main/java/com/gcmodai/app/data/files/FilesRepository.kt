@@ -364,7 +364,7 @@ class FilesRepository(
     }
 
     companion object {
-        const val BASE_URL = "http://38.76.219.151"
+        const val BASE_URL = "https://gcmod.bond"
         const val MAX_FILE_BYTES = 32L * 1024 * 1024
 
         val DEPLOYABLE_EXTENSIONS = setOf(

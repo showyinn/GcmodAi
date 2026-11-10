@@ -27,7 +27,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
 
-private const val API_URL = "http://38.76.219.151/updates.json"
+private const val API_URL = "https://gcmod.bond/updates.json"
 
 /**
  * 下载页地址。
@@ -35,7 +35,7 @@ private const val API_URL = "http://38.76.219.151/updates.json"
  * App 内下载失败时（比如历史上的 404：updates.json 指向了已删除的旧包），
  * 给用户一个兜底出口，不用被困在"下载失败"里。
  */
-const val UPDATE_DOWNLOAD_PAGE = "http://38.76.219.151/"
+const val UPDATE_DOWNLOAD_PAGE = "https://gcmod.bond/"
 private const val APK_MIME = "application/vnd.android.package-archive"
 
 /** 更新包在 App 私有缓存下的子目录名 */

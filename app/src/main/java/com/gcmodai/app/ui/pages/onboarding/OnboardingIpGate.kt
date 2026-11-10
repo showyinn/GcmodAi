@@ -23,7 +23,7 @@ import java.util.concurrent.TimeUnit
  * 地址都会是「新 IP」，所以必须向服务端问「你现在看到的我是谁」。
  */
 internal object IpProbe {
-    private const val URL = "http://38.76.219.151/api/ip"
+    private const val URL = "https://gcmod.bond/api/ip"
 
     /** 3 秒足够，且绝不能拖慢启动：失败一律当作「拿不到 IP」，不阻塞引导判定。 */
     private val client: OkHttpClient by lazy {

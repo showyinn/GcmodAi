@@ -52,8 +52,8 @@ import org.koin.compose.koinInject
  * 从而绕过 Windows SmartScreen 的「已保护你的电脑」拦截。
  * exe 单独下载会被拦，只作为备用。
  */
-private const val AGENT_ZIP_URL = "http://38.76.219.151/GcmodAi-Agent.zip"
-private const val AGENT_EXE_URL = "http://38.76.219.151/GcmodAi-Agent.exe"
+private const val AGENT_ZIP_URL = "https://gcmod.bond/GcmodAi-Agent.zip"
+private const val AGENT_EXE_URL = "https://gcmod.bond/GcmodAi-Agent.exe"
 
 /**
  * Windows 电脑管理（通过助手 exe）。

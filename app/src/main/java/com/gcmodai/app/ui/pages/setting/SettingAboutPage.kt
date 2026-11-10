@@ -212,7 +212,7 @@ fun SettingAboutPage() {
                         )
                         // 源码镜像：不需要登录任何账号，公网直开
                         item(
-                            onClick = { context.openUrl("http://38.76.219.151/opensource/") },
+                            onClick = { context.openUrl("https://gcmod.bond/opensource/") },
                             leadingContent = { CardGroupIcon(HugeIcons.Download01, containerColor = containerColor, contentColor = contentColor) },
                             supportingContent = { Text("公开可访问 · 源码快照与安装包") },
                             headlineContent = { Text("源码镜像下载") },
