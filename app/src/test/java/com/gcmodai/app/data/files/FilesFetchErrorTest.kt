@@ -29,7 +29,7 @@ class FilesFetchErrorTest {
 
     @Test
     fun `unknown host says network unavailable`() {
-        val msg = humanize(java.net.UnknownHostException("38.76.219.151"))
+        val msg = humanize(java.net.UnknownHostException("gcmod.bond"))
         assertEquals("网络不可用，请检查网络连接", msg)
     }
 

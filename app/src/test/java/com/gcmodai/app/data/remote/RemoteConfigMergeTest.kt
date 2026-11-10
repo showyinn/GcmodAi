@@ -36,7 +36,7 @@ class RemoteConfigMergeTest {
       "announcement": "第一行\n第二行",
       "announcement_enabled": "true",
       "latest_version": "3.4.2",
-      "download_url": "http://38.76.219.151/",
+      "download_url": "https://gcmod.bond/",
       "force_update": "false",
       "update_check_enabled": "true",
       "doc_url": "https://gcmod.online/",

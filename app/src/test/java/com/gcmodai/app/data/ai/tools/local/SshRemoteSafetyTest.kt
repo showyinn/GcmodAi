@@ -128,7 +128,7 @@ class SshRemoteSafetyTest {
     @Test
     fun `summary address format matches config`() {
         // 服务端拼法：username@host:port
-        val address = "root@38.76.219.151:51941"
+        val address = "root@gcmod.bond:51941"
         assertTrue(address.contains("@"))
         assertTrue(address.contains(":"))
         assertTrue(address.startsWith("root@"))
