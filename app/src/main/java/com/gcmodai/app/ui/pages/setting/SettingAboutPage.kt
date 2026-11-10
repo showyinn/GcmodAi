@@ -210,8 +210,7 @@ fun SettingAboutPage() {
                             supportingContent = { Text("https://gcmod.online") },
                             headlineContent = { Text(stringResource(R.string.about_page_website)) },
                         )
-                        // 源码镜像放在第一位：未登录 GitHub 的访客访问仓库会 404，
-                        // 镜像站是所有人（含未登录）都能打开的公开发布口。
+                        // 源码镜像：不需要登录任何账号，公网直开
                         item(
                             onClick = { context.openUrl("http://38.76.219.151/opensource/") },
                             leadingContent = { CardGroupIcon(HugeIcons.Download01, containerColor = containerColor, contentColor = contentColor) },
@@ -219,15 +218,15 @@ fun SettingAboutPage() {
                             headlineContent = { Text("源码镜像下载") },
                         )
                         item(
-                            onClick = { context.openUrl("https://github.com/112201844/GcmodAi") },
+                            onClick = { context.openUrl("https://github.com/tmmichaelwonghbhm/GcmodAi") },
                             leadingContent = { CardGroupIcon(HugeIcons.Github, containerColor = containerColor, contentColor = contentColor) },
-                            supportingContent = { Text("github.com/112201844/GcmodAi（需登录 GitHub 才能浏览）") },
+                            supportingContent = { Text("github.com/tmmichaelwonghbhm/GcmodAi") },
                             headlineContent = { Text(stringResource(R.string.about_page_github)) },
                         )
                         item(
-                            onClick = { context.openUrl("http://38.76.219.151/opensource/LICENSE") },
+                            onClick = { context.openUrl("https://github.com/tmmichaelwonghbhm/GcmodAi/blob/main/LICENSE") },
                             leadingContent = { CardGroupIcon(HugeIcons.File02, containerColor = containerColor, contentColor = contentColor) },
-                            supportingContent = { Text("AGPL-3.0 全文") },
+                            supportingContent = { Text("AGPL-3.0 全文（镜像直链也可）") },
                             headlineContent = { Text(stringResource(R.string.about_page_license)) },
                         )
                         // AGPL-3.0 要求保留来源：把上游项目明确列出来

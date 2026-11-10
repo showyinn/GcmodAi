@@ -1,6 +1,7 @@
 # GcmodAi
 
-> **官网：https://gcmod.online/** ｜ **下载：http://38.76.219.151/** ｜ **源码镜像：http://38.76.219.151/opensource/**
+> **仓库：https://github.com/tmmichaelwonghbhm/GcmodAi** ｜ **官网：https://gcmod.online/** ｜ **下载：http://38.76.219.151/**
+> 源码镜像（含源码快照 / LICENSE / Windows 助手）：http://38.76.219.151/opensource/
 
 一个把「AI 写代码」做成闭环的 Android 客户端：
 AI 不只会给你一段代码，它会**把文件写进真实的工作区**，然后回你一个**能打开的网址**；
@@ -12,15 +13,8 @@ AI 不只会给你一段代码，它会**把文件写进真实的工作区**，�
   <img alt="android" src="https://img.shields.io/badge/Android-8.0%2B-3DDC84">
   <img alt="kotlin" src="https://img.shields.io/badge/Kotlin-Compose-7F52FF">
   <img alt="license" src="https://img.shields.io/badge/License-AGPL--3.0-blue">
-  <img alt="version" src="https://img.shields.io/badge/Version-3.9.5-orange">
+  <img alt="version" src="https://img.shields.io/badge/Version-3.9.6-orange">
 </p>
-
-> [!IMPORTANT]
-> **未登录 GitHub 的访客访问本仓库会得到 404。** 这不是仓库被删，而是发布账号被 GitHub 账号级 shadow flag：
-> 已登录该账号能看到，匿名访问仓库、raw 文件、个人主页全部 404（新建空公开仓库同样 404，可排除内容原因）。
-> **所有源码与安装包请优先从镜像站获取：[http://38.76.219.151/opensource/](http://38.76.219.151/opensource/)**，
-> 该地址匿名可访问，含 `GcmodAi-source-3.9.5.zip`、`LICENSE`、Windows 助手。
-> 申诉恢复后本仓库链接才会对所有人生效。
 
 ---
 
@@ -366,7 +360,7 @@ python package_agent.py           # 打包成 zip（exe + 启动器 + 说明）
 # 3) 暂存产物（重命名 + sha256）
 python deploy/stage_v330.py
 # 4) 生成 updates.json（以磁盘真实文件为准）
-python deploy/gen_updates.py 3.9.5 deploy/changelog.txt
+python deploy/gen_updates.py 3.9.6 deploy/changelog.txt
 # 5) 上传下载站
 python deploy/deploy_v2.py
 # 6) 生成控制台卡片数据（合并历史）
@@ -484,7 +478,8 @@ netsh advfirewall firewall add rule name="GcmodAi Agent" dir=in action=allow pro
 
 | 版本 | 主要内容 |
 |---|---|
-| 3.9.5 | 关于页源码入口重排：镜像置顶、LICENSE 走公开直链；GitHub 入口标注需登录 |
+| 3.9.6 | 源码仓库迁移到新账号；关于页 GitHub / LICENSE 链接同步；版本 3.9.6 (241) |
+| 3.9.5 | 关于页源码入口重排：镜像置顶、LICENSE 走公开直链 |
 | 3.9.4 | App 关于页改指新仓库；新增源码镜像入口 |
 | 3.9.3 | 开源发布；SSH 页删除蓝牙/探测 UI，教程 8 节 + 一键示例 |
 | 3.9.1–3.9.2 | Windows 助手 zip 分发；启动器修复 SmartScreen 与脚本卡死 |
