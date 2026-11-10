@@ -354,6 +354,9 @@ python package_agent.py           # 打包成 zip（exe + 启动器 + 说明）
 
 ## 发布与更新流程
 
+> 下面命令里的 `deploy/` 是维护者本地的发布脚本（含服务端地址与部署路径），**未随源码开源**；
+> App 本体构建只需要 JDK 21 + Android SDK，与这些脚本无关。
+
 更新链路是**双来源**：管理后台 `latest_version` + `updates.json`，App 取较高者。
 
 ```bash
@@ -366,10 +369,42 @@ python deploy/stage_v330.py
 python deploy/gen_updates.py 3.9.5 deploy/changelog.txt
 # 5) 上传下载站
 python deploy/deploy_v2.py
+# 6) 生成控制台卡片数据（合并历史）
+python deploy/gen_app_info.py
+# 7) 同步到下载站 + 推到控制台所在机器
+python deploy/publish_app_info.py
+python deploy/deploy_app_card.py
 ```
 
 > ⚠️ `updates.json` 必须用脚本生成，**不要手改版本号**。
 > 曾经手改导致"声称新版本、链接指向旧包"，用户点更新就 404。
+
+### 控制台令牌页的 App 卡片
+
+`https://gcmod.online/console/token` 顶部有一张「GcmodAi 客户端」卡片：版本号、三个 ABI 下载按钮、
+SHA256、可展开的更新日志。它**不是**改 SPA 源码，而是在页面里注入一个独立脚本：
+
+| 件 | 位置 | 作用 |
+|---|---|---|
+| `gcmodai-app-download.js` | `/custom-ui/gcmodai-app-download.js` | 只在 `/console/token` 路由渲染卡片 |
+| `app-info.json` | 站点根（同源） | 版本 / 下载地址 / SHA256 / 历史日志 |
+| 一行 `<script defer>` | `smai-spa/index.html` 的 `</head>` 前 | 加载上面那个脚本 |
+
+设计约束（保证「不影响原有 UI」）：
+
+- 只在 `location.pathname` 命中 `/console/token` 时插入，其它路由不产生任何 DOM；
+- 样式全部走站点已有的 shadcn 令牌 `--card / --border / --radius / --primary / --muted-foreground`，
+  亮色暗色自动跟随，不引入新配色；
+- 数据优先读同源 `/app-info.json`，读不到用脚本内置兜底值，**任何情况都不会阻塞页面**；
+- 被 React 重新渲染带走时由 `MutationObserver` 自动补回；
+- 改动前自动备份 `index.html.bak-appcard-<时间戳>`，回滚只需还原该文件。
+
+本地回归（无需登录线上站，用 Edge headless 跑真实 DOM）：
+
+```bash
+python deploy/test_app_card.py    # 有表格 / 无表格 / 非令牌页 三种场景
+python deploy/shot_app_card.py    # 出亮色与暗色截图，肉眼比对
+```
 
 ---
 
