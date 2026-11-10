@@ -408,7 +408,10 @@ https://gcmod.online/download/<apk>   →   http://38.76.219.151/<apk>
 - 只在 `location.pathname` 命中 `/console/token` 时插入，其它路由不产生任何 DOM；
 - 样式全部走站点已有的 shadcn 令牌 `--card / --border / --radius / --primary / --muted-foreground`，
   亮色暗色自动跟随，不引入新配色；
-- 更新日志限高 `min(44vh, 336px)` 独立滚动，上下渐隐 + 细滚动条，长历史也不撑高页面；
+- **整张卡片可折叠**：右上角 chevron 收起成一行（标题 + 版本 + 机型信息），状态写 `localStorage`；
+- **更新日志不截断**：每个版本是独立可折叠条目，默认只展开最新版；日志区限高
+  `min(56vh, 420px)` 独立滚动，常显细滚动条、底部「还有更多版本」提示；
+  展开时把内层 `scrollTop` 归零（否则浏览器焦点滚动会把内容顶到中间，看起来像被截）；
 - 数据优先读同源 `app-info.json?t=<时间戳>`（绕开 CDN 边缘缓存），失败用脚本内置兜底值，**永不阻塞页面**；
 - 被 React 重新渲染带走时由 `MutationObserver` 自动补回；
 - 改动前自动备份 `index.html.bak-appcard-<时间戳>`，回滚只需还原该文件。
@@ -416,8 +419,8 @@ https://gcmod.online/download/<apk>   →   http://38.76.219.151/<apk>
 本地回归（无需登录线上站，用 Edge headless 跑真实 DOM）：
 
 ```bash
-python deploy/test_app_card.py    # 有表格 / 无表格 / 非令牌页 三种场景
-python deploy/shot_app_card.py    # 出亮色与暗色截图，肉眼比对
+python deploy/test_app_card.py    # 有表格 / 无表格 / 非令牌页 / 折叠交互 四个场景
+python deploy/shot_app_card.py    # 出亮色 / 暗色 / 日志展开 / 折叠 四张截图
 ```
 
 ---
