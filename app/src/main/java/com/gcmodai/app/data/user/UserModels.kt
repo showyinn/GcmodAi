@@ -6,7 +6,7 @@ import kotlinx.serialization.Serializable
 /**
  * GcmodAi 用户体系的数据模型。
  *
- * 数据源是 gcmod.online（New API）的用户接口，其背后即 new-api 库的 users 表。
+ * 数据源是官网的账号接口，其背后即账号服务的用户数据。
  * App 不直连数据库，凭据不下发到客户端。
  */
 

@@ -42,7 +42,7 @@ data class LeaderboardResponse(
 /**
  * 排行榜数据源。
  *
- * 服务端：https://gcmod.online/api/leaderboard（gcmod-leaderboard-svc，只读汇总表，毫秒级）
+ * 服务端：https://gcmod.online/api/leaderboard（只读汇总表，毫秒级）
  * 口径：富豪榜按累计充值金额，词元榜按 GcmodAi 供应商累计 tokens；
  *       只有在本站（供应商 GcmodAi）用过量的账号才会出现在榜单里，各榜前 10 名。
  */

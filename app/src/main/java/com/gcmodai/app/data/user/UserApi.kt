@@ -92,7 +92,7 @@ class UserApi(private val client: OkHttpClient) {
     /**
      * 发送邮箱验证码。
      *
-     * 发信由服务端完成——SMTP 主机/端口/账号/授权码都配置在 new-api 库的 options 表里
+     * 发信由服务端完成——发信参数由服务端统一配置
      * （SMTPServer=smtp.qq.com、SMTPPort=465、SMTPSSLEnabled=true、EmailDomainWhitelist=qq.com），
      * 客户端不持有任何 SMTP 凭据。
      */
@@ -280,7 +280,7 @@ class UserApi(private val client: OkHttpClient) {
         val query = buildString {
             append("$BASE_URL/api/log/self?p=").append(page)
             append("&page_size=").append(pageSize)
-            // type=0 在 new-api 里表示"全部"，显式传 0 比省略更稳
+            // type=0 表示"全部"，显式传 0 比省略更稳
             append("&type=").append(type ?: 0L)
             if (startTimestamp != null) append("&start_timestamp=").append(startTimestamp)
             if (endTimestamp != null) append("&end_timestamp=").append(endTimestamp)

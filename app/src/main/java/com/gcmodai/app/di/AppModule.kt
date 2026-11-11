@@ -68,7 +68,7 @@ val appModule = module {
         )
     }
 
-    // 用户体系：账号沿用 gcmod.online（New API），数据源是 new-api 库的 users 表。
+    // 用户体系：账号沿用官网体系，数据源是服务端账号库。
     // 客户端不持有数据库凭据，全部走 HTTPS 用户接口。
     single {
         UserApi(get())

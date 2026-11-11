@@ -12,12 +12,16 @@ internal fun Settings.withBuiltInDefaults(): Settings {
             providers.add(defaultProvider.copyProvider())
         }
     }
-    // 下线内置渠道的清理：产品要求模型供应商只保留 GcmodAi 官方渠道与 OpenAI，
-    // 所以代码里已经删掉的那些 builtIn 渠道，要从老用户的设置里一并摘除，
-    // 否则升级后界面上还挂着十几个空 key 的旧渠道。
-    // 只摘 builtIn = true 的：用户自己加的渠道（builtIn = false）和官方渠道一律不动。
+    // 下线内置渠道的清理：产品要求模型供应商只保留 GcmodAi 官方渠道与 OpenAI。
+    // 两道闸，缺一不可：
+    //   1) builtIn = true 且不在 DEFAULT_PROVIDERS 里 —— 覆盖「代码删了但标记还在」的情况
+    //   2) id 命中 RETIRED_PROVIDER_IDS —— 覆盖「标记被写过一轮变成 false」的情况
+    // 用户自建渠道（id 不在名单里、builtIn 也为 false）和官方渠道一律不动。
     providers = providers
-        .filterNot { provider -> provider.builtIn && DEFAULT_PROVIDERS.none { it.id == provider.id } }
+        .filterNot { provider ->
+            provider.id in RETIRED_PROVIDER_IDS ||
+                (provider.builtIn && DEFAULT_PROVIDERS.none { it.id == provider.id })
+        }
         .toMutableList()
     providers = providers.map { provider ->
         val defaultProvider = DEFAULT_PROVIDERS.find { it.id == provider.id }

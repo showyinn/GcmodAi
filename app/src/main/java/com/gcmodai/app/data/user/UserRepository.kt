@@ -61,7 +61,7 @@ class UserRepository(
     }
 
     /**
-     * 发送邮箱验证码。服务端按 new-api 库里的 SMTP 配置发信，只允许 QQ 邮箱。
+     * 发送邮箱验证码。服务端按统一配置发信，只允许 QQ 邮箱。
      */
     suspend fun sendVerificationCode(email: String): Result<Unit> {
         val mail = email.trim()
