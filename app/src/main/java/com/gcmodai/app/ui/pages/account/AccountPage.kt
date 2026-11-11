@@ -59,6 +59,7 @@ import me.rerere.hugeicons.stroke.Mail01
 import me.rerere.hugeicons.stroke.Notification01
 import me.rerere.hugeicons.stroke.Refresh03
 import me.rerere.hugeicons.stroke.Tag01
+import me.rerere.hugeicons.stroke.BinaryCode
 import me.rerere.hugeicons.stroke.Trophy
 import me.rerere.hugeicons.stroke.UserCircle
 import me.rerere.hugeicons.stroke.Wallet01
@@ -339,6 +340,21 @@ fun AccountPage() {
                             )
                         },
                         onClick = { navController.navigate(Screen.Leaderboard) },
+                    )
+
+                    // 二进制逆向工作台：SO/二进制/DEX/APK 解密、解析、反汇编，并交给 AI
+                    item(
+                        headlineContent = { Text("二进制 / SO 分析") },
+                        supportingContent = { Text("解密、反编译 SO / 二进制 / DEX / APK，可直接交给 AI") },
+                        leadingContent = { CardGroupIcon(HugeIcons.BinaryCode) },
+                        trailingContent = {
+                            Icon(
+                                imageVector = HugeIcons.ArrowRight01,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        },
+                        onClick = { navController.navigate(Screen.BinaryTool) },
                     )
                 }
             }
