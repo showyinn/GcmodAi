@@ -35,6 +35,16 @@ data class BinaryReport(
     val dexClasses: List<DexClassInfo> = emptyList(),
     val apkEntries: List<ApkEntry> = emptyList(),
     val manifest: ApkManifest? = null,
+    // ---- SO 还原用（对应「.init_array 解密 → 函数 XOR 还原」流程）----
+    /** .init_array 里的初始化函数地址（先于 JNI_OnLoad 执行，解密常发生在这里） */
+    val initArray: List<Long> = emptyList(),
+    val finiArray: List<Long> = emptyList(),
+    /** DT_INIT 指向的初始化函数 */
+    val dtInit: Long? = null,
+    /** 静态推出的「Java 方法 → 实现函数」映射（JNI 动态注册表） */
+    val jniRegistrations: List<JniRegistration> = emptyList(),
+    /** 疑似 XOR 解密密钥（从常量区识别的递增序列等） */
+    val keyCandidates: List<KeyCandidate> = emptyList(),
     val notes: List<String> = emptyList(),
 ) {
     val isElf: Boolean get() = format == BinaryFormat.ELF
@@ -131,6 +141,28 @@ data class BinaryReport(
                 m.exportedComponents.take(30).forEach { appendLine("    - $it") }
             }
         }
+        if (initArray.isNotEmpty() || dtInit != null) {
+            appendLine()
+            appendLine("## 初始化函数（先于 JNI_OnLoad 执行，解密常在这里）")
+            dtInit?.let { appendLine("- DT_INIT：0x${java.lang.Long.toHexString(it)}") }
+            initArray.forEach { appendLine("- .init_array：0x${java.lang.Long.toHexString(it)}") }
+        }
+        if (jniRegistrations.isNotEmpty()) {
+            appendLine()
+            appendLine("## JNI 动态注册表（静态还原）")
+            jniRegistrations.take(60).forEach {
+                appendLine("- `${it.javaName}${it.signature}` → 0x${java.lang.Long.toHexString(it.fnVaddr)}" +
+                    (it.fnOffset?.let { off -> "（文件偏移 0x${java.lang.Long.toHexString(off)}）" } ?: ""))
+            }
+        }
+        if (keyCandidates.isNotEmpty()) {
+            appendLine()
+            appendLine("## 疑似 XOR 密钥")
+            keyCandidates.take(10).forEach {
+                appendLine("- `${it.hexPreview}` 来源 ${it.source}：${it.note}")
+            }
+            appendLine("- 用法：把密钥应用到「目标 vaddr + 大小」，逐字节异或即可还原被加密的函数或节区")
+        }
         if (strings.isNotEmpty()) {
             appendLine()
             appendLine("## 字符串样本（前 ${minOf(maxStrings, strings.size)} / 共 ${strings.size}）")
@@ -188,3 +220,24 @@ data class ApkManifest(
     val exportedComponents: List<String>,
     val hasDebuggable: Boolean,
 )
+
+/** JNI 动态注册表中的一条：Java 方法名 / 签名 / 实现函数地址。 */
+data class JniRegistration(
+    val javaName: String,
+    val signature: String,
+    val fnVaddr: Long,
+    val fnOffset: Long?,
+    val nameVaddr: Long,
+)
+
+/** 疑似解密密钥：来源 + 字节 + 置信度说明。 */
+data class KeyCandidate(
+    val key: ByteArray,
+    val source: String,
+    val note: String,
+    val vaddr: Long = 0L,
+) {
+    val hexPreview: String
+        get() = key.take(16).joinToString("") { "%02X".format(it) } +
+            if (key.size > 16) "…" else ""
+}

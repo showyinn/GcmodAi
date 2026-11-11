@@ -55,7 +55,16 @@ object BinaryAnalyser {
             summary = "无法识别的格式（前 16 字节：" + ByteTools.hex(data, 16) + "）",
             notes = listOf("不是 ELF/PE/Mach-O/DEX/APK。如果是加密过的文件，先走「XOR 解密」再分析。"),
         )
-        return withPackerHints(report)
+        // ELF：顺手做静态还原（JNI 注册表 + 密钥候选），与文章里的手工流程对应
+        val enriched = if (report.format == BinaryFormat.ELF) {
+            val jni = runCatching { SoRestorer.scanJniRegistrations(data, report) }
+                .getOrDefault(emptyList())
+            val keys = runCatching { SoRestorer.findKeyCandidates(data, report) }
+                .getOrDefault(emptyList())
+            if (jni.isEmpty() && keys.isEmpty()) report
+            else report.copy(jniRegistrations = jni, keyCandidates = keys)
+        } else report
+        return withPackerHints(enriched)
     }
 
     // ---------------------------------------------------------------- DEX

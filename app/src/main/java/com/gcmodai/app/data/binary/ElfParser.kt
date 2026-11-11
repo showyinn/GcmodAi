@@ -21,6 +21,7 @@ object ElfParser {
     private const val DT_STRTAB = 5L
     private const val DT_STRSZ = 10L
     private const val DT_SONAME = 14L
+    private const val DT_INIT = 12L
 
     private fun machineName(m: Int): String = when (m) {
         0x03 -> "x86"
@@ -169,6 +170,27 @@ object ElfParser {
             }
         }
 
+        // ---- .init_array / .fini_array：解密函数通常挂在 init_array 上 ----
+        // 文章流程：先看 init_array 里的函数做了什么，再回头解 JNINativeMethod 与函数体。
+        val initArray = ArrayList<Long>()
+        val finiArray = ArrayList<Long>()
+        val ptrSize = if (is64) 8 else 4
+        for (sec in sections) {
+            val target = when (sec.typeName) {
+                "INIT_ARRAY" -> initArray
+                "FINI_ARRAY" -> finiArray
+                else -> null
+            } ?: continue
+            if (sec.offset <= 0 || sec.size <= 0) continue
+            var p = sec.offset.toInt()
+            val end = minOf(r.size, (sec.offset + sec.size).toInt())
+            while (p + ptrSize <= end) {
+                val fn = if (is64) r.u64(p, little) else r.u32(p, little)
+                if (fn != 0L && fn != -1L) target.add(fn)
+                p += ptrSize
+            }
+        }
+
         // ---- 程序头 ----
         val segments = ArrayList<SegmentInfo>()
         if (phoff > 0 && phentsize > 0) {
@@ -201,6 +223,7 @@ object ElfParser {
         // ---- 动态段：DT_NEEDED / DT_SONAME ----
         val needed = ArrayList<String>()
         var soname: String? = null
+        var dtInit: Long? = null
         runCatching {
             val dyn = sections.firstOrNull { it.typeName == "DYNAMIC" }
             if (dyn != null) {
@@ -228,6 +251,7 @@ object ElfParser {
                         for ((tag, value) in entries) {
                             if (tag == DT_NEEDED) needed.add(r.cString(base + value.toInt()))
                             if (tag == DT_SONAME) soname = r.cString(base + value.toInt())
+                            if (tag == DT_INIT && value > 0) dtInit = value
                         }
                         if (strtabSize <= 0) notes.add("动态字符串表长度为 0，可能被裁剪")
                     }
@@ -312,6 +336,9 @@ object ElfParser {
             importedSymbols = imported,
             strings = ByteTools.asciiStrings(r.raw(), minLen = 6, limit = 400),
             overallEntropy = overallEntropy,
+            initArray = initArray,
+            finiArray = finiArray,
+            dtInit = dtInit,
             notes = notes,
         )
     }

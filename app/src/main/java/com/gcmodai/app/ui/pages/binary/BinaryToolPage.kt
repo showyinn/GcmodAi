@@ -76,6 +76,7 @@ private enum class BinaryTab(val label: String) {
     Classes("类/方法"),
     Entries("包内文件"),
     Disasm("反汇编"),
+    Restore("还原"),
 }
 
 /**
@@ -101,6 +102,11 @@ fun BinaryToolPage() {
     var sectionKey by remember { mutableStateOf<XorDecryptor.SingleByteResult?>(null) }
     var sectionTarget by remember { mutableStateOf<com.gcmodai.app.data.binary.SectionInfo?>(null) }
     var disasm by remember { mutableStateOf<List<DisasmLine>>(emptyList()) }
+    // 「还原」页签的状态：文章里的 patchFunc(addr, size, key) 就是这套参数
+    var restoreVaddr by remember { mutableStateOf("") }
+    var restoreSize by remember { mutableStateOf("") }
+    var restoreKey by remember { mutableStateOf("") }
+    var restoreMsg by remember { mutableStateOf<String?>(null) }
     var patchOffset by remember { mutableStateOf("") }
     var patchBytes by remember { mutableStateOf("") }
     var findText by remember { mutableStateOf("") }
@@ -123,6 +129,23 @@ fun BinaryToolPage() {
                 toast("分析完成：${r.format.label}")
             }.onFailure { toast("分析失败：${it.message}") }
             busy = false
+        }
+    }
+
+    /**
+     * 对指定 vaddr 范围做逐字节 XOR 还原，成功后另存并重新分析。
+     * 这就是文章里 patchFunc(addr, size, key) 的等价实现，只是把 IDA 脚本换成了 App 内操作。
+     */
+    fun applyRestore(result: com.gcmodai.app.data.binary.SoRestorer.RestoreResult) {
+        bytes = result.data
+        restoreMsg = result.detail
+        if (result.looksRestored) {
+            saveAndReport(
+                context, result.data, fileName ?: "restored.so", "已还原：${result.detail}"
+            ) { msg ->
+                toast(msg)
+                analyse(fileName ?: "restored.so", result.data)
+            }
         }
     }
 
@@ -482,6 +505,7 @@ fun BinaryToolPage() {
                             BinaryTab.Entries -> r.apkEntries.isNotEmpty()
                             BinaryTab.Symbols -> r.exportedSymbols.isNotEmpty() || r.importedSymbols.isNotEmpty()
                             BinaryTab.Disasm -> r.format == BinaryFormat.ELF || r.format == BinaryFormat.PE
+                            BinaryTab.Restore -> r.format == BinaryFormat.ELF
                             else -> true
                         }
                         if (visible) {
@@ -564,6 +588,185 @@ fun BinaryToolPage() {
 
                 BinaryTab.Entries -> items(r.apkEntries.take(400)) { e ->
                     MonoRow(left = e.path, right = ByteTools.humanSize(e.sizeBytes))
+                }
+
+                BinaryTab.Restore -> {
+                    item {
+                        Card {
+                            Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Text("初始化函数（解密通常在这里）", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                                r.dtInit?.let {
+                                    Text("DT_INIT：0x${java.lang.Long.toHexString(it)}",
+                                        style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace)
+                                }
+                                if (r.initArray.isEmpty()) {
+                                    Text("没有 .init_array 条目", style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                } else {
+                                    r.initArray.take(8).forEach { fnVaddr ->
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Text(
+                                                "0x${java.lang.Long.toHexString(fnVaddr)}",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                fontFamily = FontFamily.Monospace,
+                                                modifier = Modifier.weight(1f),
+                                            )
+                                            // 文章流程的下一步：直接看这些初始化函数做了什么
+                                            OutlinedButton(
+                                                enabled = !busy && bytes != null,
+                                                onClick = {
+                                                    val data = bytes ?: return@OutlinedButton
+                                                    val off = com.gcmodai.app.data.binary.SoRestorer
+                                                        .vaddrToOffset(r, fnVaddr)
+                                                    if (off == null) {
+                                                        toast("该地址映射不到文件偏移")
+                                                    } else {
+                                                        val start = off.toInt()
+                                                        val len = minOf(512, data.size - start)
+                                                        if (len <= 0) {
+                                                            toast("地址越界")
+                                                        } else {
+                                                            val code = data.copyOfRange(start, start + len)
+                                                            disasm = if (r.arch.contains("x86", true)) {
+                                                                com.gcmodai.app.data.binary.X86Lite
+                                                                    .disassemble(code, fnVaddr, maxLines = 160)
+                                                            } else {
+                                                                com.gcmodai.app.data.binary.Arm64Lite
+                                                                    .disassemble(code, fnVaddr, maxLines = 160)
+                                                            }
+                                                            tab = BinaryTab.Disasm
+                                                        }
+                                                    }
+                                                },
+                                            ) { Text("反汇编", maxLines = 1) }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    item {
+                        Card {
+                            Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Text(
+                                    "JNI 动态注册表（${r.jniRegistrations.size} 条）",
+                                    style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold
+                                )
+                                if (r.jniRegistrations.isEmpty()) {
+                                    Text("未静态还原出注册表：可能用静态注册，或注册表被加密",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                } else {
+                                    r.jniRegistrations.take(40).forEach { reg ->
+                                        Text(
+                                            "${reg.javaName}${reg.signature} → 0x${java.lang.Long.toHexString(reg.fnVaddr)}",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            fontFamily = FontFamily.Monospace,
+                                            maxLines = 2, overflow = TextOverflow.Ellipsis,
+                                            modifier = Modifier.fillMaxWidth(),
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    item {
+                        Card {
+                            Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text("疑似密钥与还原", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                                if (r.keyCandidates.isEmpty()) {
+                                    Text("常量区没找到典型 XOR 密钥（可能是多字节/流加密，或密钥在 .bss 需运行期 dump）",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                } else {
+                                    r.keyCandidates.take(4).forEach { kc ->
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Column(Modifier.weight(1f)) {
+                                                Text(kc.hexPreview, style = MaterialTheme.typography.bodySmall,
+                                                    fontFamily = FontFamily.Monospace)
+                                                Text(kc.note, style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                    maxLines = 2, overflow = TextOverflow.Ellipsis)
+                                            }
+                                            OutlinedButton(
+                                                enabled = !busy,
+                                                onClick = {
+                                                    val data = bytes ?: return@OutlinedButton
+                                                    val text = r.sections.firstOrNull { it.name == ".text" }
+                                                    if (text == null) {
+                                                        toast("没有 .text 段，请用手动还原指定地址")
+                                                    } else {
+                                                        busy = true
+                                                        scope.launch {
+                                                            runCatching {
+                                                                withContext(Dispatchers.Default) {
+                                                                    com.gcmodai.app.data.binary.SoRestorer.restoreXor(
+                                                                        data, r, text.addr, text.size, kc.key
+                                                                    )
+                                                                }
+                                                            }.onSuccess { applyRestore(it) }
+                                                                .onFailure { toast("还原失败：${it.message}") }
+                                                            busy = false
+                                                        }
+                                                    }
+                                                },
+                                            ) { Text("还原 .text", maxLines = 1) }
+                                        }
+                                    }
+                                }
+                                Text("手动还原（vaddr / 大小 / 密钥，均十六进制）",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    OutlinedTextField(
+                                        value = restoreVaddr, onValueChange = { restoreVaddr = it },
+                                        label = { Text("vaddr") }, singleLine = true,
+                                        modifier = Modifier.weight(1f),
+                                    )
+                                    OutlinedTextField(
+                                        value = restoreSize, onValueChange = { restoreSize = it },
+                                        label = { Text("大小") }, singleLine = true,
+                                        modifier = Modifier.weight(0.7f),
+                                    )
+                                }
+                                OutlinedTextField(
+                                    value = restoreKey, onValueChange = { restoreKey = it },
+                                    label = { Text("密钥 HEX（如 00010203…FF 或 1A2B）") },
+                                    singleLine = true, modifier = Modifier.fillMaxWidth(),
+                                )
+                                Button(
+                                    enabled = !busy && restoreVaddr.isNotBlank() && restoreSize.isNotBlank() && restoreKey.isNotBlank(),
+                                    onClick = {
+                                        val data = bytes ?: return@Button
+                                        val vaddr = restoreVaddr.trim().removePrefix("0x").toLongOrNull(16)
+                                        val size = restoreSize.trim().removePrefix("0x")
+                                            .let { if (it.any { c -> c in "abcdefABCDEF" }) it.toLongOrNull(16) else it.toLongOrNull() }
+                                        val key = com.gcmodai.app.data.binary.XorDecryptor.parseKey(restoreKey)
+                                        if (vaddr == null || size == null || key == null || key.isEmpty()) {
+                                            toast("vaddr / 大小 / 密钥 格式不对")
+                                            return@Button
+                                        }
+                                        busy = true
+                                        scope.launch {
+                                            runCatching {
+                                                withContext(Dispatchers.Default) {
+                                                    com.gcmodai.app.data.binary.SoRestorer.restoreXor(
+                                                        data, r, vaddr, size, key
+                                                    )
+                                                }
+                                            }.onSuccess { applyRestore(it) }
+                                                .onFailure { toast("还原失败：${it.message}") }
+                                            busy = false
+                                        }
+                                    },
+                                ) { Text("还原并另存", maxLines = 1) }
+                                restoreMsg?.let {
+                                    Text(it, style = MaterialTheme.typography.bodySmall,
+                                        fontFamily = FontFamily.Monospace)
+                                }
+                            }
+                        }
+                    }
                 }
 
                 BinaryTab.Disasm -> {
