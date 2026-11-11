@@ -27,7 +27,7 @@ data class LoginPayload(
     val user: ApiUser = ApiUser(),
 )
 
-/** 用户资料，字段与 users 表一一对应 */
+/** 用户资料 */
 @Serializable
 data class ApiUser(
     val id: Long = 0L,
