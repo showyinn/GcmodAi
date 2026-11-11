@@ -359,6 +359,7 @@ private fun FolderRow(
 @Composable
 private fun folderDisplayName(folder: String): String = when (folder) {
     FileFolders.UPLOAD -> stringResource(R.string.setting_files_page_folder_upload)
+    FileFolders.HARDEN -> stringResource(R.string.setting_files_page_folder_harden)
     else -> folder
 }
 
