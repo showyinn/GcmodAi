@@ -8,6 +8,7 @@ import android.provider.OpenableColumns
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -32,6 +33,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -42,6 +44,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -150,6 +153,16 @@ fun BinaryToolPage() {
         }
     }
 
+    // 进页自动拉起文件选择：从附件面板的「SO 分析」快捷入口进来时少一步操作。
+    // 只在首次进入且还没选过文件时触发，避免每次返回页面都弹选择器。
+    var autoPickOnce by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        if (!autoPickOnce && bytes == null) {
+            autoPickOnce = true
+            runCatching { picker.launch(arrayOf("*/*")) }
+        }
+    }
+
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
 
     Scaffold(
@@ -168,17 +181,19 @@ fun BinaryToolPage() {
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding),
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 32.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 8.dp, bottom = 28.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             item {
                 Card {
-                    Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(
                                 text = fileName ?: "未选择文件",
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.SemiBold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
                                 modifier = Modifier.weight(1f),
                             )
                             if (busy) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
@@ -190,21 +205,27 @@ fun BinaryToolPage() {
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Button(onClick = { picker.launch(arrayOf("*/*")) }) { Text("选择文件") }
+                        // FlowRow：窄屏（小屏/大字体）下按钮自动换行，不会把「交给 AI 分析」挤到屏幕外
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            Button(onClick = { picker.launch(arrayOf("*/*")) }) {
+                                Text("选择文件", maxLines = 1)
+                            }
                             if (report != null) {
                                 OutlinedButton(onClick = {
                                     val markdown = report!!.toMarkdown()
                                     context.getSystemService(ClipboardManager::class.java)
                                         ?.setPrimaryClip(ClipData.newPlainText("binary-report", markdown))
                                     toast("报告已复制到剪贴板")
-                                }) { Text("复制报告") }
+                                }) { Text("复制报告", maxLines = 1) }
                                 Button(onClick = {
                                     val markdown = report!!.toMarkdown()
                                     navController.navigate(
                                         Screen.Chat(Uuid.random().toString(), text = markdown)
                                     )
-                                }) { Text("交给 AI 分析") }
+                                }) { Text("交给 AI 分析", maxLines = 1) }
                             }
                         }
                         if (status.isNotBlank()) {
@@ -234,9 +255,12 @@ fun BinaryToolPage() {
             // ---- 解密 ----
             item {
                 Card {
-                    Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text("解密（循环 XOR · 已知明文）", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
                             OutlinedButton(enabled = !busy && bytes != null, onClick = {
                                 val data = bytes ?: return@OutlinedButton
                                 busy = true
@@ -297,7 +321,10 @@ fun BinaryToolPage() {
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
                             OutlinedButton(enabled = !busy && bytes != null, onClick = {
                                 val data = bytes ?: return@OutlinedButton
                                 busy = true
@@ -378,7 +405,7 @@ fun BinaryToolPage() {
             // ---- 编辑 ----
             item {
                 Card {
-                    Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text("编辑并另存", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             OutlinedTextField(
@@ -497,8 +524,18 @@ fun BinaryToolPage() {
                     }
                 }
 
+                // 字符串页：base64/URL 这类超长不换行串在窄屏上会溢出色块，
+                // 这里限制 3 行并省略，完整内容仍可从「复制报告」导出
                 BinaryTab.Strings -> items(r.strings.take(400)) { s ->
-                    Text(s, style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace)
+                    Text(
+                        s,
+                        style = MaterialTheme.typography.bodySmall,
+                        fontFamily = FontFamily.Monospace,
+                        maxLines = 3,
+                        overflow = TextOverflow.Ellipsis,
+                        softWrap = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
                 }
 
                 BinaryTab.Classes -> items(r.dexClasses.take(300)) { c ->
@@ -589,7 +626,10 @@ fun BinaryToolPage() {
                             "0x${java.lang.Long.toHexString(line.address)}  %08X  %s".format(line.word, line.text),
                             style = MaterialTheme.typography.bodySmall,
                             fontFamily = FontFamily.Monospace,
-                            fontSize = 11.sp,
+                            fontSize = 10.5.sp,
+                            lineHeight = 14.sp,
+                            softWrap = true,
+                            modifier = Modifier.fillMaxWidth(),
                         )
                     }
                 }
@@ -630,13 +670,15 @@ private fun InfoLine(label: String, value: String) {
             label,
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.weight(0.28f),
+            modifier = Modifier.weight(0.3f),
         )
         Text(
             value,
             style = MaterialTheme.typography.bodySmall,
             fontFamily = FontFamily.Monospace,
-            modifier = Modifier.weight(0.72f),
+            // softWrap：SHA256、依赖库列表这类长值在窄屏上换行，而不是被截断
+            softWrap = true,
+            modifier = Modifier.weight(0.7f),
         )
     }
 }
@@ -649,13 +691,17 @@ private fun MonoRow(left: String, right: String) {
                 left,
                 style = MaterialTheme.typography.bodySmall,
                 fontFamily = FontFamily.Monospace,
-                modifier = Modifier.weight(0.6f),
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(0.58f),
             )
             Text(
                 right,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.weight(0.4f),
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(0.42f),
             )
         }
     }

@@ -55,6 +55,7 @@ import com.gcmodai.ai.provider.ProviderSetting
 import me.rerere.hugeicons.HugeIcons
 import me.rerere.hugeicons.stroke.ArrowLeft01
 import me.rerere.hugeicons.stroke.ArrowRight01
+import me.rerere.hugeicons.stroke.BinaryCode
 import me.rerere.hugeicons.stroke.Camera01
 import me.rerere.hugeicons.stroke.Codesandbox
 import me.rerere.hugeicons.stroke.ComputerTerminal01
@@ -212,6 +213,14 @@ internal fun FilesPicker(
                         add(AttachmentAction(HugeIcons.Video01, R.string.video, onPickVideo))
                         add(AttachmentAction(HugeIcons.MusicNote03, R.string.audio, onPickAudio))
                         add(AttachmentAction(HugeIcons.Files02, R.string.upload_file, onPickFile))
+                        // [so-entry-20261111] SO/二进制分析的快捷入口：
+                        // 附件面板是用户最常打开的地方，把分析工具放这里比藏进「我的账号」里更好找。
+                        add(
+                            AttachmentAction(HugeIcons.BinaryCode, R.string.binary_tool_entry) {
+                                onDismiss()
+                                navController.navigate(Screen.BinaryTool)
+                            }
+                        )
                         onStartVoiceMode?.let { start ->
                             add(AttachmentAction(HugeIcons.Voice, R.string.chat_page_voice_title, start))
                         }

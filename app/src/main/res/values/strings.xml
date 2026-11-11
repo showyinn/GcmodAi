@@ -1797,4 +1797,5 @@
     <string name="assistant_page_local_tools_ssh_desc">让 AI 连接你自己的服务器，直接在上面建站</string>
     <string name="assistant_page_local_tools_pc_title">电脑控制</string>
     <string name="assistant_page_local_tools_pc_desc">让 AI 在你已连接的电脑上执行命令、读写任意文件、安装环境</string>
+    <string name="binary_tool_entry">SO Analysis</string>
 </resources>

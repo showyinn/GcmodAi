@@ -1799,4 +1799,5 @@ mDNS 地址：使用 .local 主机名，同一网络中的其他设备可通过�
     <string name="assistant_page_local_tools_ssh_desc">Let AI connect to your own server and deploy sites there</string>
     <string name="assistant_page_local_tools_pc_title">Computer control</string>
     <string name="assistant_page_local_tools_pc_desc">Let AI run commands, read and write files, and set up software on your connected computer</string>
+    <string name="binary_tool_entry">SO 分析</string>
 </resources>
