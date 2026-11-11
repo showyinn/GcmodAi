@@ -56,6 +56,7 @@ import me.rerere.hugeicons.HugeIcons
 import me.rerere.hugeicons.stroke.ArrowLeft01
 import me.rerere.hugeicons.stroke.ArrowRight01
 import me.rerere.hugeicons.stroke.BinaryCode
+import me.rerere.hugeicons.stroke.Shield01
 import me.rerere.hugeicons.stroke.Camera01
 import me.rerere.hugeicons.stroke.Codesandbox
 import me.rerere.hugeicons.stroke.ComputerTerminal01
@@ -219,6 +220,13 @@ internal fun FilesPicker(
                             AttachmentAction(HugeIcons.BinaryCode, R.string.binary_tool_entry) {
                                 onDismiss()
                                 navController.navigate(Screen.BinaryTool)
+                            }
+                        )
+                        // [harden-entry-20261111] APK 加固快捷入口：聊天里点附件就能进
+                        add(
+                            AttachmentAction(HugeIcons.Shield01, R.string.harden_entry) {
+                                onDismiss()
+                                navController.navigate(Screen.Harden)
                             }
                         )
                         onStartVoiceMode?.let { start ->

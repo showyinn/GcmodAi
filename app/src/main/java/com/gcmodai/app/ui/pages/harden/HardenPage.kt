@@ -19,6 +19,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -80,6 +81,11 @@ fun HardenPage() {
     var logs by remember { mutableStateOf<List<String>>(emptyList()) }
     var resultBytes by remember { mutableStateOf<ByteArray?>(null) }
     var savedPath by remember { mutableStateOf<String?>(null) }
+    // 类扫描结果与勾选（混淆 / dex2c 抽取）
+    var classes by remember { mutableStateOf<List<HardenClient.DexClass>>(emptyList()) }
+    var scanning by remember { mutableStateOf(false) }
+    var selectedObf by remember { mutableStateOf<Set<String>>(emptySet()) }
+    var selectedDex by remember { mutableStateOf<Set<String>>(emptySet()) }
 
     fun readUri(uri: Uri, maxBytes: Long = 240L * 1024 * 1024): Pair<String, ByteArray>? {
         val name = context.contentResolver.query(uri, null, null, null, null)?.use { c ->
@@ -260,6 +266,92 @@ fun HardenPage() {
             }
 
             item {
+                Card {
+                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("选择要处理的类", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                        Text(
+                            "先扫描类列表，再勾选：\"混淆\"=重命名该类，\"抽取\"=dex2c 抽到 native（产物固定 libGcmodAi.so）。\n" +
+                                "含 $ 的内部类/生成类不可勾选；组件类会被服务端自动跳过。",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                            OutlinedButton(
+                                enabled = !busy && !scanning && apkBytes != null,
+                                onClick = {
+                                    val data = apkBytes ?: return@OutlinedButton
+                                    scanning = true
+                                    stateText = "扫描类列表中…（服务端会再上传一次同一 APK）"
+                                    scope.launch {
+                                        client.scan(data)
+                                            .onSuccess { list ->
+                                                classes = list
+                                                selectedObf = emptySet()
+                                                selectedDex = emptySet()
+                                                stateText = "扫描完成：共 ${list.size} 个类可勾选"
+                                            }
+                                            .onFailure { stateText = "扫描失败：${it.message}" }
+                                        scanning = false
+                                    }
+                                },
+                            ) { Text(if (scanning) "扫描中…" else "扫描类", maxLines = 1) }
+                            if (classes.isNotEmpty()) {
+                                Text(
+                                    "已选 混淆 ${selectedObf.size} / 抽取 ${selectedDex.size}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.primary,
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (classes.isNotEmpty()) {
+                items(classes.take(200)) { c ->
+                    Row(
+                        Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text(
+                                c.name,
+                                style = MaterialTheme.typography.bodySmall,
+                                fontFamily = FontFamily.Monospace,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                            Text(
+                                "方法 ${c.methods} · ${c.size / 1024} KB",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Checkbox(
+                                checked = c.descriptor in selectedObf,
+                                enabled = c.obfuscatable && !busy,
+                                onCheckedChange = { on ->
+                                    selectedObf = if (on) selectedObf + c.descriptor else selectedObf - c.descriptor
+                                },
+                            )
+                            Text("混淆", style = MaterialTheme.typography.labelSmall)
+                        }
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Checkbox(
+                                checked = c.descriptor in selectedDex,
+                                enabled = c.dex2cOk && !busy,
+                                onCheckedChange = { on ->
+                                    selectedDex = if (on) selectedDex + c.descriptor else selectedDex - c.descriptor
+                                },
+                            )
+                            Text("抽取", style = MaterialTheme.typography.labelSmall)
+                        }
+                    }
+                }
+            }
+
+            item {
                 FlowRow(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -281,6 +373,8 @@ fun HardenPage() {
                                     keystorePass = ksPass,
                                     keyAlias = keyAlias,
                                     keyPass = keyPass,
+                                    obfuscateClasses = selectedObf.toList(),
+                                    dex2cClasses = selectedDex.toList(),
                                 )
                                 client.submit(data, opts)
                                     .onSuccess { id ->
@@ -310,7 +404,7 @@ fun HardenPage() {
                                 }
                                 .onFailure { stateText = "保存失败：${it.message}" }
                         },
-                    ) { Text("保存结果", maxLines = 1) }
+                    ) { Text("下载加固包", maxLines = 1) }
 
                     if (busy) {
                         CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
