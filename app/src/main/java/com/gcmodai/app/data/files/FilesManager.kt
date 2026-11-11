@@ -521,6 +521,9 @@ object FileFolders {
     const val FONTS = "fonts"
     const val TOOL_OUTPUTS = "tool_outputs"
     const val MEDIA_CREATION = "media_creation"
+
+    /** 加固后的安装包：单独目录，方便在「存储管理」里查看与删除 */
+    const val HARDEN = "harden"
 }
 
 suspend fun FilesManager.saveUploadFromUri(

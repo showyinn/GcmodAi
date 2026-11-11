@@ -1791,4 +1791,5 @@
     <string name="assistant_page_local_tools_pc_desc">Let AI run commands, read and write files, and set up software on your connected computer</string>
     <string name="binary_tool_entry">SO 分析</string>
     <string name="harden_entry">APK 加固</string>
+    <string name="setting_files_page_folder_harden">加固包</string>
 </resources>
