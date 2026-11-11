@@ -5,7 +5,10 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.provider.OpenableColumns
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -39,6 +42,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -50,6 +54,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.gcmodai.app.data.workspace.WorkspaceEntry
 import com.gcmodai.app.data.workspace.WorkspaceQuota
@@ -79,8 +86,39 @@ import me.rerere.hugeicons.stroke.Upload04
 fun MyWorkspacePage(vm: MyWorkspaceVM) {
     val state by vm.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val scrollScope = rememberCoroutineScope()
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     val snackbar = remember { SnackbarHostState() }
+
+    // 上传本机文件到当前目录。
+    // 关键点：按原始字节读、按原始字节发（走 VM 的 writeBytes），
+    // apk / zip / 7z / so 这类二进制不会被字符串转换破坏。
+    val uploadLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenMultipleDocuments()
+    ) { uris ->
+        if (uris.isNullOrEmpty()) return@rememberLauncherForActivityResult
+        scrollScope.launch {
+            val items = withContext(Dispatchers.IO) {
+                uris.mapNotNull { uri ->
+                    runCatching {
+                        val name = context.contentResolver
+                            .query(uri, null, null, null, null)?.use { cursor ->
+                                val idx = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                                if (idx >= 0 && cursor.moveToFirst()) cursor.getString(idx) else null
+                            } ?: uri.lastPathSegment ?: "file"
+                        val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+                            ?: return@mapNotNull null
+                        WorkspaceUpload(name = name, bytes = bytes)
+                    }.getOrNull()
+                }
+            }
+            if (items.isEmpty()) {
+                snackbar.showSnackbar("读取文件失败，请重试")
+            } else {
+                vm.uploadFiles(items)
+            }
+        }
+    }
 
     var pendingDelete by remember { mutableStateOf<WorkspaceEntry?>(null) }
     var showNewFile by remember { mutableStateOf(false) }
@@ -189,6 +227,13 @@ fun MyWorkspacePage(vm: MyWorkspaceVM) {
                 title = { Text("我的工作区") },
                 navigationIcon = { BackButton() },
                 actions = {
+                    // 上传：支持任意文件（apk / zip / 7z / so / 图片…），按原始字节写入当前目录
+                    IconButton(
+                        onClick = { uploadLauncher.launch(arrayOf("*/*")) },
+                        enabled = !state.saving,
+                    ) {
+                        Icon(HugeIcons.Upload04, contentDescription = "上传文件")
+                    }
                     IconButton(onClick = { vm.refresh() }) {
                         Icon(HugeIcons.Refresh03, contentDescription = "刷新")
                     }

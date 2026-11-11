@@ -34,11 +34,13 @@ data class WorkspaceUiState(
         get() = entries.any { !it.isDir && it.name.equals("index.html", ignoreCase = true) }
 }
 
+/** 待上传到工作区的文件：文件名 + 原始字节（不做任何编码转换）。 */
+data class WorkspaceUpload(val name: String, val bytes: ByteArray)
+
 class MyWorkspaceVM(
     private val repository: WorkspaceRepository,
     private val scope: AppScope,
-) : ViewModel() {
-    private val _state = MutableStateFlow(WorkspaceUiState())
+) : ViewModel() {    private val _state = MutableStateFlow(WorkspaceUiState())
     val state: StateFlow<WorkspaceUiState> = _state.asStateFlow()
 
     fun refresh() {
@@ -188,6 +190,40 @@ class MyWorkspaceVM(
 
     fun clearDeployed() {
         _state.update { it.copy(deployedUrl = null) }
+    }
+
+    /**
+     * 把本机文件上传进当前目录。
+     *
+     * 走 [WorkspaceRepository.writeBytes]（原始字节），所以 apk / zip / 7z / so
+     * 不会被 UTF-8 转换破坏——这是"工作区能上传二进制"的关键。
+     */
+    fun uploadFiles(files: List<WorkspaceUpload>) {
+        if (files.isEmpty()) return
+        val dir = _state.value.currentDir
+        scope.launch {
+            _state.update { it.copy(saving = true) }
+            var ok = 0
+            val failures = ArrayList<String>()
+            for (f in files) {
+                val path = if (dir.isBlank()) f.name else "$dir/${f.name}"
+                when (val r = repository.writeBytes(path, f.bytes)) {
+                    is WorkspaceResult.Ok -> ok++
+                    is WorkspaceResult.Err -> failures.add("${f.name}：${r.message}")
+                }
+            }
+            _state.update { it.copy(saving = false) }
+            val msg = buildString {
+                if (ok > 0) append("已上传 $ok 个文件")
+                if (failures.isNotEmpty()) {
+                    if (ok > 0) append("；")
+                    append(failures.take(2).joinToString("；"))
+                    if (failures.size > 2) append(" 等 ${failures.size} 个失败")
+                }
+            }
+            _state.update { it.copy(toast = msg.ifBlank { "没有可上传的文件" }) }
+            refresh()
+        }
     }
 
     fun consumeToast() {

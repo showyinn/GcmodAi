@@ -171,6 +171,18 @@ fun ChatPage(id: Uuid, text: String?, files: List<Uri>, nodeId: Uuid? = null) {
                             add(UIMessagePart.Video(url = file.toString()))
                         } else if (type?.startsWith("audio/") == true) {
                             add(UIMessagePart.Audio(url = file.toString()))
+                        } else {
+                            // [upload-fix-20261111] 其它类型（apk/zip/7z/so/pdf…）以前在这里被静默丢弃，
+                            // 表现就是"选完文件却什么都没附上"。统一按文档部件带上文件名与 MIME。
+                            val name = filesManager.getFileNameFromUri(file)
+                                ?: file.lastPathSegment ?: "file"
+                            add(
+                                UIMessagePart.Document(
+                                    url = file.toString(),
+                                    fileName = name,
+                                    mime = type ?: "application/octet-stream",
+                                )
+                            )
                         }
                     }
                 }

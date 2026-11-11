@@ -295,9 +295,19 @@ class WorkspaceRepository(
         path: String,
         content: String,
         charset: java.nio.charset.Charset = Charsets.UTF_8,
+    ): WorkspaceResult<ScanReport> = writeBytes(path, content.toByteArray(charset))
+
+    /**
+     * 写入二进制文件（上传用）。
+     *
+     * 与 [write] 走同一个服务端接口，区别只是不过一遍 String 转换：
+     * apk / zip / 7z / so 这类内容按 UTF-8 转一次就会被破坏，必须按原始字节上传。
+     */
+    suspend fun writeBytes(
+        path: String,
+        bytes: ByteArray,
     ): WorkspaceResult<ScanReport> = withContext(Dispatchers.IO) {
         val t = token() ?: return@withContext WorkspaceResult.Err("未登录，请先登录账号")
-        val bytes = content.toByteArray(charset)
         if (bytes.size > MAX_FILE_BYTES) {
             return@withContext WorkspaceResult.Err(
                 "单文件不能超过 ${MAX_FILE_BYTES / 1048576}MB"
