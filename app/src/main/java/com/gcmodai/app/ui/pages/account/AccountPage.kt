@@ -59,6 +59,7 @@ import me.rerere.hugeicons.stroke.Mail01
 import me.rerere.hugeicons.stroke.Notification01
 import me.rerere.hugeicons.stroke.Refresh03
 import me.rerere.hugeicons.stroke.Tag01
+import me.rerere.hugeicons.stroke.Trophy
 import me.rerere.hugeicons.stroke.UserCircle
 import me.rerere.hugeicons.stroke.Wallet01
 import org.koin.compose.koinInject
@@ -323,6 +324,22 @@ fun AccountPage() {
                             onClick = { navController.navigate(Screen.Billing) },
                         )
                     }
+
+                    // 排行榜：富豪榜（累计充值）+ 词元榜（GcmodAi 供应商 tokens）
+                    // 只要在站内用过 GcmodAi 供应商的量就会参与排名，各榜展示前 10 名
+                    item(
+                        headlineContent = { Text("排行榜") },
+                        supportingContent = { Text("富豪榜与词元榜，各榜前 10 名") },
+                        leadingContent = { CardGroupIcon(HugeIcons.Trophy) },
+                        trailingContent = {
+                            Icon(
+                                imageVector = HugeIcons.ArrowRight01,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        },
+                        onClick = { navController.navigate(Screen.Leaderboard) },
+                    )
                 }
             }
 

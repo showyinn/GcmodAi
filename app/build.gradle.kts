@@ -26,8 +26,8 @@ android {
         applicationId = "com.gcmodai.app"
         minSdk = 26
         targetSdk = 37
-        versionCode = 243
-        versionName = "3.9.8"
+        versionCode = 244
+        versionName = "3.9.9"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -383,4 +383,11 @@ dependencies {
     androidTestImplementation(libs.androidx.room.testing)
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
+}
+
+// Crashlytics 会把混淆映射上传到 firebasecrashlyticssymbols.googleapis.com，
+// 国内链路必然连接超时并让整轮 assemble 失败（APK 其实早就打好了）。
+// 产物不依赖这次上传，本地 mapping.txt 仍会生成，所以直接关掉上传任务。
+tasks.matching { it.name.startsWith("uploadCrashlyticsMappingFile") }.configureEach {
+    enabled = false
 }

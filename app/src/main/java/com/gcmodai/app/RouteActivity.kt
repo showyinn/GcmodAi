@@ -122,6 +122,7 @@ import com.gcmodai.app.data.user.UserRepository
 import com.gcmodai.app.ui.pages.account.AccountPage
 import com.gcmodai.app.ui.pages.billing.BillingPage
 import com.gcmodai.app.ui.pages.checkin.CheckinPage
+import com.gcmodai.app.ui.pages.leaderboard.LeaderboardPage
 import com.gcmodai.app.ui.pages.files.FilesPage
 import com.gcmodai.app.ui.pages.workspace.MyWorkspacePage
 import com.gcmodai.app.ui.pages.workspace.WorkspaceHubPage
@@ -617,6 +618,10 @@ class RouteActivity : ComponentActivity() {
                                 CheckinPage()
                             }
 
+                            entry<Screen.Leaderboard> {
+                                LeaderboardPage()
+                            }
+
                             entry<Screen.Files> {
                                 FilesPage(vm = koinViewModel())
                             }
@@ -869,6 +874,10 @@ sealed interface Screen : NavKey {
     /** 每日签到 */
     @Serializable
     data object Checkin : Screen
+
+    /** 排行榜：富豪榜（累计充值）+ 词元榜（GcmodAi 供应商 tokens 消耗） */
+    @Serializable
+    data object Leaderboard : Screen
 
     /** 代码产物托管（公网可访问，替代原 Web 服务器） */
     @Serializable

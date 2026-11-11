@@ -260,6 +260,8 @@ fun SettingProviderPage(vm: SettingVM = koinViewModel()) {
 private fun RecommendProviderButton(
     onAdd: (ProviderSetting) -> Unit
 ) {
+    // 供应商只保留 GcmodAi 与 OpenAI 之后，推荐列表为空，入口直接不渲染
+    if (RECOMMENDED_PROVIDERS.isEmpty()) return
     val toaster = LocalToaster.current
     var showSheet by remember { mutableStateOf(false) }
     val importSuccessMessage = stringResource(R.string.setting_provider_page_import_success)

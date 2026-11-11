@@ -32,6 +32,7 @@ import com.gcmodai.app.data.db.fts.MessageFtsManager
 import com.gcmodai.app.data.remote.ModelsDevUpdater
 import com.gcmodai.app.data.remote.RemoteFileStore
 import com.gcmodai.app.data.remote.GcmodAiAPI
+import com.gcmodai.app.data.remote.LeaderboardRepository
 import com.gcmodai.app.data.remote.SettingsProxyAuthenticator
 import com.gcmodai.app.data.remote.SettingsProxySelector
 import com.gcmodai.app.data.remote.SettingsSocks5Authenticator
@@ -304,6 +305,11 @@ val dataSourceModule = module {
 
     single {
         MediaGenerationManager(client = get())
+    }
+
+    // 排行榜：https://gcmod.online/api/leaderboard（富豪榜 / 词元榜，各前 10 名）
+    single {
+        LeaderboardRepository(client = get())
     }
 
     single<Retrofit> {
