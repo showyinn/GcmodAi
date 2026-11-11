@@ -124,6 +124,7 @@ import com.gcmodai.app.ui.pages.billing.BillingPage
 import com.gcmodai.app.ui.pages.checkin.CheckinPage
 import com.gcmodai.app.ui.pages.leaderboard.LeaderboardPage
 import com.gcmodai.app.ui.pages.binary.BinaryToolPage
+import com.gcmodai.app.ui.pages.harden.HardenPage
 import com.gcmodai.app.ui.pages.files.FilesPage
 import com.gcmodai.app.ui.pages.workspace.MyWorkspacePage
 import com.gcmodai.app.ui.pages.workspace.WorkspaceHubPage
@@ -627,6 +628,10 @@ class RouteActivity : ComponentActivity() {
                                 BinaryToolPage()
                             }
 
+                            entry<Screen.Harden> {
+                                HardenPage()
+                            }
+
                             entry<Screen.Files> {
                                 FilesPage(vm = koinViewModel())
                             }
@@ -883,6 +888,10 @@ sealed interface Screen : NavKey {
     /** 排行榜：富豪榜（累计充值）+ 词元榜（GcmodAi 供应商 tokens 消耗） */
     @Serializable
     data object Leaderboard : Screen
+
+    /** APK 加固（服务器端 apktool + apksigner 流水线） */
+    @Serializable
+    data object Harden : Screen
 
     /** 二进制逆向工作台：SO/二进制/DEX/APK 的解密、解析、反汇编与 AI 交接 */
     @Serializable

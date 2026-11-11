@@ -58,6 +58,7 @@ import me.rerere.hugeicons.stroke.CustomerService01
 import me.rerere.hugeicons.stroke.Mail01
 import me.rerere.hugeicons.stroke.Notification01
 import me.rerere.hugeicons.stroke.Refresh03
+import me.rerere.hugeicons.stroke.Shield01
 import me.rerere.hugeicons.stroke.Tag01
 import me.rerere.hugeicons.stroke.BinaryCode
 import me.rerere.hugeicons.stroke.Trophy
@@ -340,6 +341,21 @@ fun AccountPage() {
                             )
                         },
                         onClick = { navController.navigate(Screen.Leaderboard) },
+                    )
+
+                    // APK 加固：上传到服务器跑 apktool 反编译 + 混淆 + 重打包 + 签名
+                    item(
+                        headlineContent = { Text("APK 加固") },
+                        supportingContent = { Text("剥离调试信息与 SO 符号、重打包并签名（可用自己的证书）") },
+                        leadingContent = { CardGroupIcon(HugeIcons.Shield01) },
+                        trailingContent = {
+                            Icon(
+                                imageVector = HugeIcons.ArrowRight01,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        },
+                        onClick = { navController.navigate(Screen.Harden) },
                     )
 
                     // 二进制逆向工作台：SO/二进制/DEX/APK 解密、解析、反汇编，并交给 AI

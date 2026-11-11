@@ -31,6 +31,7 @@ import com.gcmodai.app.data.db.AppDatabaseFactory
 import com.gcmodai.app.data.db.fts.MessageFtsManager
 import com.gcmodai.app.data.remote.ModelsDevUpdater
 import com.gcmodai.app.data.remote.RemoteFileStore
+import com.gcmodai.app.data.harden.HardenClient
 import com.gcmodai.app.data.remote.GatewayFailoverInterceptor
 import com.gcmodai.app.data.remote.GcmodAiAPI
 import com.gcmodai.app.data.remote.LeaderboardRepository
@@ -310,6 +311,9 @@ val dataSourceModule = module {
     single {
         MediaGenerationManager(client = get())
     }
+
+    // APK 加固：上传到 gcmod.bond 的加固服务，服务器跑 apktool/apksigner
+    single { HardenClient(client = get(), userRepository = get()) }
 
     // 排行榜：https://gcmod.online/api/leaderboard（富豪榜 / 词元榜，各前 10 名）
     single {
