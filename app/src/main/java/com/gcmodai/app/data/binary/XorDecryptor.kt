@@ -186,6 +186,72 @@ object XorDecryptor {
         }
         return if (bytes.isEmpty()) null else bytes.toByteArray()
     }
+
+    // ---------------------------------------------------------------------
+    // 节区级探测
+    // ---------------------------------------------------------------------
+
+    data class SingleByteResult(
+        val key: Int,
+        val entropyBefore: Double,
+        val entropyAfter: Double,
+        val hint: String,
+    ) {
+        val keyHex: String get() = "%02X".format(key)
+    }
+
+    /** 解密后能认出来的容器/文件头，用来判断「这个 key 是不是对的」。 */
+    private fun containerHint(head: ByteArray): String? {
+        fun startsWith(vararg bs: Int): Boolean {
+            if (head.size < bs.size) return false
+            for (i in bs.indices) if ((head[i].toInt() and 0xFF) != bs[i]) return false
+            return true
+        }
+        return when {
+            startsWith(0x1F, 0x8B) -> "GZIP 压缩数据"
+            startsWith(0x78, 0x01) || startsWith(0x78, 0x9C) || startsWith(0x78, 0xDA) -> "ZLIB 压缩数据"
+            startsWith(0x5D, 0x00, 0x00) -> "LZMA 压缩数据"
+            startsWith(0x7F, 0x45, 0x4C, 0x46) -> "ELF 文件"
+            startsWith(0x50, 0x4B, 0x03, 0x04) -> "ZIP 归档"
+            startsWith(0x89, 0x50, 0x4E, 0x47) -> "PNG 图片"
+            startsWith(0x64, 0x65, 0x78, 0x0A) -> "DEX 字节码"
+            else -> null
+        }
+    }
+
+    /**
+     * 单字节 XOR 暴力：找出让「熵明显下降」或「解出已知容器头」的那个 key。
+     *
+     * 为什么需要它：很多加固/混淆只对某个节区（例如 .rodata）做单字节 XOR，
+     * 整文件魔数还是好的——这时整文件已知明文攻击找不到 key，必须按节区来试。
+     * 判据用「熵下降 + 能认出容器头」，避免把随机噪声当成成功。
+     */
+    fun bruteForceSingleByte(section: ByteArray, sampleSize: Int = 200_000): SingleByteResult? {
+        if (section.size < 64) return null
+        val sample = if (section.size > sampleSize) section.copyOf(sampleSize) else section
+        val before = ByteTools.entropy(sample)
+        // 熵本来就不高说明没加密，不必试
+        if (before < 6.5) return null
+
+        var best: SingleByteResult? = null
+        for (k in 1..255) {
+            val decoded = ByteArray(minOf(sample.size, 4096)) { i -> (sample[i].toInt() xor k).toByte() }
+            val hint = containerHint(decoded)
+            val afterEntropyFull = ByteTools.entropy(ByteArray(sample.size) { i -> (sample[i].toInt() xor k).toByte() })
+            val candidate = SingleByteResult(
+                key = k,
+                entropyBefore = before,
+                entropyAfter = afterEntropyFull,
+                hint = hint ?: "",
+            )
+            if (hint != null) return candidate          // 解出已知容器头：直接判定成功
+            // 否则仅在熵显著下降时保留最优解（下降 0.8 以上才算有信号）
+            if (before - afterEntropyFull >= 0.8) {
+                if (best == null || afterEntropyFull < best.entropyAfter) best = candidate
+            }
+        }
+        return best
+    }
 }
 
 /**

@@ -159,6 +159,20 @@
         android:name="android.support.FILE_PROVIDER_PATHS"
         android:resource="@xml/file_paths" />
     </provider>
+
+    <!--
+      [crash-fix-20261111] 关掉 Firebase 的自动初始化。
+      线上复现：部分国产 ROM 上 Google Play 服务缺失或被裁剪，FirebaseInitProvider 在进程启动时
+      触发 GMS Binder 调用并抛 SecurityException（Binder invocation to an incorrect interface），
+      直接导致「打开就崩 / 进安全模式」。我们并不依赖 Firebase 的云端能力（Crashlytics 映射上传
+      早已关闭，埋点也改成了可降级实现），因此这里整块摘掉自动初始化。
+      需要时可在代码里显式 Firebase.initialize(context)，而不是让它在启动路径上自动跑。
+    -->
+    <provider
+      android:name="com.google.firebase.provider.FirebaseInitProvider"
+      android:authorities="${applicationId}.firebaseinitprovider"
+      tools:node="remove" />
+
     <provider
       android:name=".service.WorkspaceDocumentsProvider"
       android:authorities="${applicationId}.documents"

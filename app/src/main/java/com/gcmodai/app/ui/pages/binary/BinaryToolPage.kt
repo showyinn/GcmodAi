@@ -53,6 +53,7 @@ import com.gcmodai.app.data.binary.BinaryFormat
 import com.gcmodai.app.data.binary.BinaryReport
 import com.gcmodai.app.data.binary.ByteTools
 import com.gcmodai.app.data.binary.DisasmLine
+import com.gcmodai.app.data.binary.X86Lite
 import com.gcmodai.app.data.binary.XorDecryptor
 import com.gcmodai.app.ui.components.nav.BackButton
 import com.gcmodai.app.ui.theme.CustomColors
@@ -94,6 +95,8 @@ fun BinaryToolPage() {
     var tab by remember { mutableStateOf(BinaryTab.Overview) }
     var autoKey by remember { mutableStateOf<XorDecryptor.XorKey?>(null) }
     var manualKey by remember { mutableStateOf("") }
+    var sectionKey by remember { mutableStateOf<XorDecryptor.SingleByteResult?>(null) }
+    var sectionTarget by remember { mutableStateOf<com.gcmodai.app.data.binary.SectionInfo?>(null) }
     var disasm by remember { mutableStateOf<List<DisasmLine>>(emptyList()) }
     var patchOffset by remember { mutableStateOf("") }
     var patchBytes by remember { mutableStateOf("") }
@@ -287,6 +290,87 @@ fun BinaryToolPage() {
                                 }
                             }) { Text("应用") }
                         }
+
+                        // ---- 节区级探测：整文件没有 XOR 迹象时，问题往往只出在某个节区 ----
+                        Text(
+                            "整文件找不到密钥时，多半是「只对某个节区加密」（常见于 SO 混淆与加固）。",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OutlinedButton(enabled = !busy && bytes != null, onClick = {
+                                val data = bytes ?: return@OutlinedButton
+                                busy = true
+                                scope.launch {
+                                    runCatching {
+                                        withContext(Dispatchers.Default) {
+                                            r.sections
+                                                .filter { it.size >= 256 && it.entropy >= 6.5 }
+                                                .sortedByDescending { it.entropy }
+                                                .firstNotNullOfOrNull { sec ->
+                                                    val off = sec.offset.toInt()
+                                                    if (off < 0 || off >= data.size) return@firstNotNullOfOrNull null
+                                                    val len = minOf(
+                                                        sec.size,
+                                                        (data.size - off).toLong(),
+                                                        200_000L,
+                                                    ).toInt()
+                                                    if (len < 64) return@firstNotNullOfOrNull null
+                                                    XorDecryptor.bruteForceSingleByte(data.copyOfRange(off, off + len))
+                                                        ?.let { it to sec }
+                                                }
+                                        }
+                                    }.onSuccess { found ->
+                                        if (found == null) {
+                                            sectionKey = null
+                                            sectionTarget = null
+                                            toast("各节区都没有单字节 XOR 特征：更可能是多字节/流加密或厂商加固（壳）")
+                                        } else {
+                                            sectionKey = found.first
+                                            sectionTarget = found.second
+                                            toast(
+                                                "节区 `${found.second.name}` 候选密钥 0x${found.first.keyHex}" +
+                                                    "（熵 %.2f → %.2f）%s".format(
+                                                        found.first.entropyBefore,
+                                                        found.first.entropyAfter,
+                                                        if (found.first.hint.isNotEmpty()) "，解出 ${found.first.hint}" else "",
+                                                    )
+                                            )
+                                        }
+                                    }.onFailure { toast("节区探测失败：${it.message}") }
+                                    busy = false
+                                }
+                            }) { Text("节区暴力试解密") }
+
+                            OutlinedButton(
+                                enabled = sectionKey != null && sectionTarget != null && !busy,
+                                onClick = {
+                                    val data = bytes ?: return@OutlinedButton
+                                    val key = sectionKey ?: return@OutlinedButton
+                                    val sec = sectionTarget ?: return@OutlinedButton
+                                    val off = sec.offset.toInt()
+                                    val len = minOf(sec.size, (data.size - off).toLong()).toInt()
+                                    val out = data.copyOf()
+                                    for (i in 0 until len) {
+                                        out[off + i] = (out[off + i].toInt() xor key.key).toByte()
+                                    }
+                                    bytes = out
+                                    toast("已对节区 `${sec.name}` 应用密钥 0x${key.keyHex}")
+                                    analyse(fileName ?: "decrypted.bin", out)
+                                },
+                            ) { Text("应用到该节区") }
+                        }
+                        sectionKey?.let {
+                            Text(
+                                "节区 ${sectionTarget?.name}：密钥 0x${it.keyHex}，熵 %.2f → %.2f%s".format(
+                                    it.entropyBefore,
+                                    it.entropyAfter,
+                                    if (it.hint.isNotEmpty()) "（解出 ${it.hint}）" else "",
+                                ),
+                                style = MaterialTheme.typography.bodySmall,
+                                fontFamily = FontFamily.Monospace,
+                            )
+                        }
                     }
                 }
             }
@@ -447,29 +531,58 @@ fun BinaryToolPage() {
 
                 BinaryTab.Disasm -> {
                     item {
-                        Button(enabled = !busy, onClick = {
-                            val data = bytes ?: return@Button
-                            busy = true
-                            scope.launch {
-                                val lines = withContext(Dispatchers.Default) {
-                                    val text = r.sections.firstOrNull { it.name == ".text" }
-                                        ?: r.sections.firstOrNull { it.flags.contains("X") }
-                                    val base = text?.addr ?: (r.entryPoint ?: 0L)
-                                    val start = text?.offset?.toInt() ?: 0
-                                    val len = (text?.size ?: (data.size.toLong() - start)).toInt()
-                                        .coerceAtMost(64 * 1024)
-                                    Arm64Lite.disassemble(data.copyOfRange(start, start + len), base, maxLines = 600)
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Button(enabled = !busy, onClick = {
+                                val data = bytes ?: return@Button
+                                busy = true
+                                scope.launch {
+                                    runCatching {
+                                        withContext(Dispatchers.Default) {
+                                            // 取代码段：优先 .text，其次任何可执行节区
+                                            val text = r.sections.firstOrNull { it.name == ".text" }
+                                                ?: r.sections.firstOrNull { it.flags.contains("X") }
+                                            val base = text?.addr ?: (r.entryPoint ?: 0L)
+                                            val start = (text?.offset ?: 0L)
+                                                .coerceIn(0L, (data.size - 1).toLong().coerceAtLeast(0L))
+                                                .toInt()
+                                            // 关键：节区的 size 是「节区内大小」，可能大于文件中剩余字节，
+                                            // 不夹取边界会直接 copyOfRange 越界崩溃
+                                            val len = minOf(
+                                                text?.size ?: (data.size - start).toLong(),
+                                                (data.size - start).toLong(),
+                                                64L * 1024,
+                                            ).toInt()
+                                            val code = if (len > 0) data.copyOfRange(start, start + len) else ByteArray(0)
+                                            when {
+                                                r.arch.contains("x86", ignoreCase = true) ->
+                                                    X86Lite.disassemble(code, base, maxLines = 600)
+                                                else ->
+                                                    Arm64Lite.disassemble(code, base, maxLines = 600)
+                                            }
+                                        }
+                                    }.onSuccess { lines ->
+                                        disasm = lines
+                                        toast(
+                                            when {
+                                                r.arch.contains("x86", true) && lines.isNotEmpty() ->
+                                                    "已按 x86-64 轻量反汇编 ${lines.size} 条"
+                                                lines.isNotEmpty() ->
+                                                    "已按 AArch64 轻量反汇编 ${lines.size} 条"
+                                                else -> "该文件没有可反汇编的代码段（可能是加壳的壳代码或纯数据）"
+                                            }
+                                        )
+                                    }.onFailure { toast("反汇编失败：${it.message}") }
+                                    busy = false
                                 }
-                                disasm = lines
-                                toast(
-                                    when (r.arch) {
-                                        "AArch64 (ARM64)", "ARM (32 位)" -> "已按 AArch64 轻量反汇编 ${lines.size} 条"
-                                        else -> "当前架构（${r.arch}）走的是轻量还原，未识别指令以 .word 保留原始字节"
-                                    }
-                                )
-                                busy = false
-                            }
-                        }) { Text("反汇编代码段") }
+                            }) { Text("反汇编代码段") }
+                        }
+                        if (disasm.isNotEmpty()) {
+                            Text(
+                                "当前架构：${r.arch}（未识别指令以 .byte/.word 保留原始编码，不会错位）",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
                     }
                     items(disasm) { line ->
                         Text(

@@ -205,10 +205,12 @@ internal fun FilesPicker(
                         add(AttachmentAction(HugeIcons.Camera01, R.string.take_picture, onTakePic))
                         add(AttachmentAction(HugeIcons.Image02, R.string.photo, onPickImage))
                         add(AttachmentAction(HugeIcons.PaintBoard, R.string.sketch, onSketch))
-                        if (provider != null && provider is ProviderSetting.Google) {
-                            add(AttachmentAction(HugeIcons.Video01, R.string.video, onPickVideo))
-                            add(AttachmentAction(HugeIcons.MusicNote03, R.string.audio, onPickAudio))
-                        }
+                        // [video-audio-20261111] 视频与音频入口对所有渠道开放。
+                        // 上游原来只在 Gemini 渠道下显示（Gemini 原生吃视频/音频），
+                        // 导致 GcmodAi 官方渠道与 OpenAI 渠道的用户完全看不到这两个入口。
+                        // 附件类型按 MIME 分别包成 Video/Audio 部件，由网关决定是否接受。
+                        add(AttachmentAction(HugeIcons.Video01, R.string.video, onPickVideo))
+                        add(AttachmentAction(HugeIcons.MusicNote03, R.string.audio, onPickAudio))
                         add(AttachmentAction(HugeIcons.Files02, R.string.upload_file, onPickFile))
                         onStartVoiceMode?.let { start ->
                             add(AttachmentAction(HugeIcons.Voice, R.string.chat_page_voice_title, start))

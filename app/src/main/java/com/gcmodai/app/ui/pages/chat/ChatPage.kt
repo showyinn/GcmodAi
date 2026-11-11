@@ -1,6 +1,7 @@
 package com.gcmodai.app.ui.pages.chat
 
 import android.net.Uri
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
@@ -152,30 +153,37 @@ fun ChatPage(id: Uuid, text: String?, files: List<Uri>, nodeId: Uuid? = null) {
     val inputState = vm.inputState
 
     // 初始化输入状态（处理传入的 files 和 text 参数）
+    // 整段用 runCatching 包住：这里处理的是外部传入内容（分享/Intent/内部跳转），
+    // 任何一处抛异常都会在 Compose 的 LaunchedEffect 里变成整页闪退。
     LaunchedEffect(files, text) {
-        if (files.isNotEmpty()) {
-            val localFiles = filesManager.createChatFilesByContents(files)
-            val contentTypes = files.mapNotNull { file ->
-                filesManager.getFileMimeType(file)
-            }
-            val parts = buildList {
-                localFiles.forEachIndexed { index, file ->
-                    val type = contentTypes.getOrNull(index)
-                    if (type?.startsWith("image/") == true) {
-                        add(UIMessagePart.Image(url = file.toString()))
-                    } else if (type?.startsWith("video/") == true) {
-                        add(UIMessagePart.Video(url = file.toString()))
-                    } else if (type?.startsWith("audio/") == true) {
-                        add(UIMessagePart.Audio(url = file.toString()))
+        runCatching {
+            if (files.isNotEmpty()) {
+                val localFiles = filesManager.createChatFilesByContents(files)
+                val contentTypes = files.mapNotNull { file ->
+                    filesManager.getFileMimeType(file)
+                }
+                val parts = buildList {
+                    localFiles.forEachIndexed { index, file ->
+                        val type = contentTypes.getOrNull(index)
+                        if (type?.startsWith("image/") == true) {
+                            add(UIMessagePart.Image(url = file.toString()))
+                        } else if (type?.startsWith("video/") == true) {
+                            add(UIMessagePart.Video(url = file.toString()))
+                        } else if (type?.startsWith("audio/") == true) {
+                            add(UIMessagePart.Audio(url = file.toString()))
+                        }
                     }
                 }
+                inputState.messageContent = parts
             }
-            inputState.messageContent = parts
-        }
-        text?.base64Decode()?.let { decodedText ->
-            if (decodedText.isNotEmpty()) {
-                inputState.setMessageText(decodedText)
+            // base64Decode 已容错：不是合法 Base64 就原样返回，因此纯文本报告也能直接用
+            text?.base64Decode()?.let { decodedText ->
+                if (decodedText.isNotEmpty()) {
+                    inputState.setMessageText(decodedText)
+                }
             }
+        }.onFailure { e ->
+            Log.w("ChatPage", "初始化传入内容失败，已忽略：${e.javaClass.simpleName}: ${e.message}")
         }
     }
 

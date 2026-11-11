@@ -1,10 +1,9 @@
 package com.gcmodai.app.di
 
-import com.google.firebase.Firebase
-import com.google.firebase.analytics.analytics
-import com.google.firebase.crashlytics.crashlytics
 import kotlinx.serialization.json.Json
 import com.gcmodai.app.AppScope
+import com.gcmodai.app.data.analytics.AppAnalytics
+import com.gcmodai.app.data.analytics.SafeAppAnalytics
 import com.gcmodai.app.data.ai.ChatRequestFactory
 import com.gcmodai.app.data.ai.tools.ChatToolFactory
 import com.gcmodai.app.data.ai.tools.local.LocalTools
@@ -178,12 +177,11 @@ val appModule = module {
         TTSManager(get())
     }
 
-    single {
-        Firebase.crashlytics
-    }
-
-    single {
-        Firebase.analytics
+    // 埋点走安全包装：Firebase/GMS 不可用时降级为 no-op。
+    // 直接 single { Firebase.analytics } 会让容器在创建实例时就抛异常，
+    // 在缺失 Google 服务的机器上表现为启动崩溃（已复现），不要改回去。
+    single<AppAnalytics> {
+        SafeAppAnalytics(get())
     }
 
     single {

@@ -19,9 +19,23 @@ fun String.base64Encode(): String {
     return Base64.encode(this.toByteArray())
 }
 
+/**
+ * Base64 解码，**失败时原样返回**。
+ *
+ * 为什么必须容错而不是抛异常：这个函数被 ChatPage 用来处理外部传入的文本参数
+ * （分享/Intent 的约定是传 Base64），但调用方不一定守约定。曾经线上崩过：
+ * 传入 Markdown 报告时 `Invalid symbol '#'(43)`，异常发生在 Compose 的
+ * LaunchedEffect 里 → 整页闪退。任何来自外部的内容都不允许打死界面。
+ */
 @OptIn(ExperimentalEncodingApi::class)
 fun String.base64Decode(): String {
-    return String(Base64.decode(this))
+    return runCatching { String(Base64.decode(trim())) }.getOrDefault(this)
+}
+
+/** 严格版本：只有确实是合法 Base64 才返回结果，否则 null。 */
+@OptIn(ExperimentalEncodingApi::class)
+fun String.base64DecodeOrNull(): String? {
+    return runCatching { String(Base64.decode(trim())) }.getOrNull()
 }
 
 fun String.escapeHtml(): String {

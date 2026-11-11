@@ -31,6 +31,7 @@ import com.gcmodai.app.data.db.AppDatabaseFactory
 import com.gcmodai.app.data.db.fts.MessageFtsManager
 import com.gcmodai.app.data.remote.ModelsDevUpdater
 import com.gcmodai.app.data.remote.RemoteFileStore
+import com.gcmodai.app.data.remote.GatewayFailoverInterceptor
 import com.gcmodai.app.data.remote.GcmodAiAPI
 import com.gcmodai.app.data.remote.LeaderboardRepository
 import com.gcmodai.app.data.remote.SettingsProxyAuthenticator
@@ -185,7 +186,7 @@ val dataSourceModule = module {
         client = OkHttpClient.Builder()
             .proxySelector(SettingsProxySelector(settingsStore))
             .proxyAuthenticator(SettingsProxyAuthenticator(settingsStore))
-            .connectTimeout(20, TimeUnit.SECONDS)
+            .connectTimeout(8, TimeUnit.SECONDS)
             .readTimeout(10, TimeUnit.MINUTES)
             .writeTimeout(120, TimeUnit.SECONDS)
             .followSslRedirects(true)
@@ -234,6 +235,9 @@ val dataSourceModule = module {
             }
             .addNetworkInterceptor(RequestLoggingInterceptor())
             .addInterceptor(AIRequestInterceptor())
+            // [failover-20261111] 主域名（CDN）连不上时自动切到自有源站备用入口。
+            // 放在最后：前面的鉴权/UA 拦截器已经改好请求，切换时不会丢头。
+            .addInterceptor(GatewayFailoverInterceptor())
             .addInterceptor(HttpLoggingInterceptor().apply {
                 redactHeader("Proxy-Authorization")
                 level = HttpLoggingInterceptor.Level.HEADERS

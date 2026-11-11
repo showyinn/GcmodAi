@@ -222,6 +222,22 @@ object BinaryAnalyser {
             if (textSection != null && textSection.entropy >= 7.4) {
                 hints.add(".text 段熵 %.2f：代码段被加密的可能性较大".format(textSection.entropy))
             }
+            // 节名被随机化（.rodata/.text 之类的名字被换成乱码）是常见混淆手段
+            val weird = report.sections.filter { s ->
+                val n = s.name
+                n.length >= 8 && !n.startsWith(".") ||
+                    (n.startsWith(".") && n.length >= 10 && n.count { it == 'a' || it == 'e' || it == 'i' || it == 'o' || it == 'u' } <= 1)
+            }
+            if (weird.size >= 3) {
+                hints.add("有 ${weird.size} 个节区名疑似被随机化（例如 `${weird.first().name}`）：常见于 SO 混淆/加固工具")
+            }
+            // 单个节区熵接近 8（例如 .rodata 7.99）通常意味着里面有加密或压缩数据
+            report.sections.filter { it.entropy >= 7.9 && it.size >= 512 }.take(3).forEach {
+                hints.add("节区 `${it.name}` 熵 %.2f（接近随机），内部数据很可能被加密或压缩".format(it.entropy))
+            }
+            if (report.entryPoint == 0L && report.sections.any { it.name == ".text" }) {
+                hints.add("入口点为 0：该库不通过 ELF 入口执行，真正的初始化在 .init_array 或 JNI_OnLoad 里")
+            }
         }
         if (report.format == BinaryFormat.DEX) {
             if (report.dexClasses.isEmpty()) hints.add("解析出的类为 0：可能是壳的 dex（真正的 dex 在运行时释放）")
