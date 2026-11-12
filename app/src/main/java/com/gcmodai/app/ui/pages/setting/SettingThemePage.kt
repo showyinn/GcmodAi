@@ -181,30 +181,32 @@ fun SettingThemePage(vm: SettingVM = koinViewModel()) {
                     }
                 }
 
-                // ---- DIY：圆角 / 按钮尺寸 / 列表密度 ----
-                item("uiDiy") {
-                    CardGroup(
-                        title = { Text("界面 DIY") },
+            // ---- DIY：圆角 / 按钮尺寸 / 列表密度 ----
+            // 放在 dynamicColor 判断之外：这三个是"界面形状"的偏好，
+            // 和「是否使用系统动态取色」无关，任何时候都该能调。
+            item("uiDiy") {
+                CardGroup(
+                    title = { Text("界面 DIY") },
+                ) {
+                    formItem(
+                        headlineContent = { Text("圆角") },
+                        supportingContent = {
+                            Text(
+                                "当前 %.0f%%：卡片、弹窗、输入框、按钮一起缩放"
+                                    .format(settings.cornerScale * 100)
+                            )
+                        },
                     ) {
-                        formItem(
-                            headlineContent = { Text("圆角") },
-                            supportingContent = {
-                                Text(
-                                    "当前 %.0f%%：卡片、弹窗、输入框、按钮一起缩放"
-                                        .format(settings.cornerScale * 100)
-                                )
-                            },
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Text("利落", style = MaterialTheme.typography.labelSmall)
-                                Slider(
-                                    value = settings.cornerScale,
-                                    onValueChange = { v ->
-                                        vm.updateSettings { it.copy(cornerScale = v) }
-                                    },
+                            Text("利落", style = MaterialTheme.typography.labelSmall)
+                            Slider(
+                                value = settings.cornerScale,
+                                onValueChange = { v ->
+                                    vm.updateSettings { it.copy(cornerScale = v) }
+                                },
                                     valueRange = 0.5f..1.8f,
                                     // 0.05 一档，手感够细又不会滑到停不下来
                                     steps = 25,
