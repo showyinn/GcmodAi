@@ -27,6 +27,8 @@ class HardenClient(
 ) {
 
     data class Options(
+        /** 加固模式：safe（最兼容）/ standard（推荐）/ deep（混淆 + dex2c + 反调试） */
+        val mode: String = "standard",
         val stripSmaliDebug: Boolean = true,
         val stripSo: Boolean = true,
         val renameClasses: Boolean = false,
@@ -55,6 +57,8 @@ class HardenClient(
         val size: Long = 0,
         val obfuscatable: Boolean = true,
         @SerialName("dex2c_ok") val dex2cOk: Boolean = true,
+        /** 不可抽取的原因（服务端安全体检结论，直接展示给用户） */
+        @SerialName("dex2c_reason") val dex2cReason: String = "",
     )
 
     @Serializable
@@ -75,7 +79,8 @@ class HardenClient(
     private fun token(): String? = userRepository.sessionFlow.value?.accessToken
 
     private fun optionsJson(o: Options): String = buildString {
-        append("{\"strip_smali_debug\":").append(o.stripSmaliDebug)
+        append("{\"mode\":\"").append(o.mode).append("\"")
+        append(",\"strip_smali_debug\":").append(o.stripSmaliDebug)
         append(",\"strip_so\":").append(o.stripSo)
         append(",\"rename_classes\":").append(o.renameClasses)
         append(",\"obfuscate_classes\":").append(

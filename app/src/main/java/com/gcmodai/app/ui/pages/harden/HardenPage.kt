@@ -24,6 +24,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
@@ -103,6 +104,8 @@ fun HardenPage() {
     var stripSo by remember { mutableStateOf(true) }
     // 反调试守卫：默认关闭。自己用 Studio 调试时装上会直接退出，属于预期行为。
     var antiDebug by remember { mutableStateOf(false) }
+    // 加固模式：默认「标准」—— 不动代码逻辑，绝大多数包都安全
+    var mode by remember { mutableStateOf("standard") }
 
     var busy by remember { mutableStateOf(false) }
     var scanning by remember { mutableStateOf(false) }
@@ -259,6 +262,40 @@ fun HardenPage() {
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                             )
+                        }
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+                        // 加固模式：先说清楚"改动越小越不容易崩"，再让用户选强度
+                        Text(
+                            "加固模式",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                        Text(
+                            when (mode) {
+                                "safe" -> "只剥离调试信息 + 重新签名。改的东西最少，兼容性最好（推荐给线上包）"
+                                "deep" -> "在标准模式上叠加类混淆 / dex2c / 反调试。防护最强，" +
+                                    "但改动最大；服务端会做兼容性终检，不通过就不会出包"
+                                else -> "剥离调试信息 + SO 符号剥离 + v1/v2/v3 签名 + 对齐。不动代码逻辑，" +
+                                    "绝大多数 App 都安全"
+                            },
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            listOf(
+                                "safe" to "最兼容",
+                                "standard" to "标准",
+                                "deep" to "深度加固",
+                            ).forEach { (id, label) ->
+                                FilterChip(
+                                    selected = mode == id,
+                                    onClick = { mode = id },
+                                    label = { Text(label) },
+                                )
+                            }
                         }
                         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
                         OptionRow(
@@ -422,6 +459,7 @@ fun HardenPage() {
                                             obfuscateClasses = selectedObf.toList(),
                                             dex2cClasses = selectedDex.toList(),
                                             antiDebug = antiDebug,
+                                            mode = mode,
                                         )
                                         client.submit(data, opts)
                                             .onSuccess { id -> jobId = id; stateText = "已提交，等待服务器处理…" }
@@ -638,11 +676,19 @@ private fun ClassRow(
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(
-                    "方法 ${item.methods} · ${item.size / 1024} KB" +
-                        if (!item.obfuscatable) " · 不可混淆" else "",
+                    buildString {
+                        append("方法 ${item.methods} · ${item.size / 1024} KB")
+                        if (!item.obfuscatable) append(" · 不可混淆")
+                        // 服务端安全体检结论：直接说明"为什么这个类抽不了"，
+                        // 而不是把勾选框灰着却不给理由。
+                        if (!item.dex2cOk && item.dex2cReason.isNotBlank()) {
+                            append(" · 不可抽取：").append(item.dex2cReason)
+                        }
+                    },
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
