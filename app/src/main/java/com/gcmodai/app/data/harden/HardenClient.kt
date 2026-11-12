@@ -16,8 +16,11 @@ import okhttp3.RequestBody.Companion.toRequestBody
 /**
  * 服务器端加固客户端。
  *
- * 为什么加固放服务器：dex2c 要 NDK+LLVM、Ollvm 是编译期 pass、DEX 重写要 apktool+smali，
- * 手机端既装不下也跑不动。App 只做「上传 APK → 轮询进度 → 下载加固结果」。
+ * 为什么加固放服务器：dex2c 要 NDK+LLVM、OLLVM 是编译期 pass、DEX 重写要 apktool+smali，
+ * 手机端既装不下也跑不动。App 只做「选 APK → 配参数 → 轮询进度 → 下载结果」。
+ *
+ * 配置项对照云镜那套思路：模式（最兼容/标准/深度）、保护类规则、自定义入口类与 so 名、
+ * 签名 MD5 校验、Root / Hook / 抓包检测、多架构选择。
  *
  * 认证沿用 App 已有的用户令牌（Bearer），服务端用它打 /api/user/self 校验。
  */
@@ -27,7 +30,7 @@ class HardenClient(
 ) {
 
     data class Options(
-        /** 加固模式：safe（最兼容）/ standard（推荐）/ deep（混淆 + dex2c + 反调试） */
+        /** 加固模式：safe（最兼容）/ standard（推荐）/ deep（混淆 + dex2c + 防护） */
         val mode: String = "standard",
         val stripSmaliDebug: Boolean = true,
         val stripSo: Boolean = true,
@@ -36,8 +39,21 @@ class HardenClient(
         val obfuscateClasses: List<String> = emptyList(),
         /** 勾选要 dex2c 抽取到 native 的类描述符 */
         val dex2cClasses: List<String> = emptyList(),
-        /** 反调试守卫：注入 libGcmodGuard.so（ptrace / TracerPid / Frida 三重检测，命中即退出） */
+        /** 类规则：+com.foo.* 包含 / -com.foo.Bar 排除，每行一条（服务端算成类清单） */
+        val classRules: List<String> = emptyList(),
+        /** 反调试守卫：注入保护 .so（ptrace / TracerPid / Frida 等检测，命中即退出） */
         val antiDebug: Boolean = false,
+        val rootCheck: Boolean = false,
+        val hookCheck: Boolean = false,
+        val proxyCheck: Boolean = false,
+        /** 签名校验：期望的 32 位小写签名 MD5，空=不校验 */
+        val sigMd5: String = "",
+        /** 自定义入口类（注入 loadLibrary 的落点），空=自动找 Application */
+        val customEntryClass: String = "",
+        /** 自定义 so 名，空=GcmodAi（dex2c）/ GcmodGuard（守卫） */
+        val customSoName: String = "",
+        /** 只对守卫与 dex2c 生效的 ABI 列表，空=按 APK 现有 ABI */
+        val abis: List<String> = emptyList(),
         /** 用你自己的签名证书，加固后的包才能覆盖安装（不传则用服务器证书，需卸载重装） */
         val keystore: ByteArray? = null,
         val keystorePass: String = "",
@@ -89,7 +105,19 @@ class HardenClient(
         append(",\"dex2c_classes\":").append(
             o.dex2cClasses.joinToString(",", "[", "]") { "\"" + it + "\"" }
         )
+        append(",\"class_rules\":").append(
+            o.classRules.joinToString(",", "[", "]") { "\"" + it.replace("\"", "") + "\"" }
+        )
         append(",\"anti_debug\":").append(o.antiDebug)
+        append(",\"root_check\":").append(o.rootCheck)
+        append(",\"hook_check\":").append(o.hookCheck)
+        append(",\"proxy_check\":").append(o.proxyCheck)
+        append(",\"sig_md5\":\"").append(o.sigMd5).append("\"")
+        append(",\"custom_entry_class\":\"").append(o.customEntryClass).append("\"")
+        append(",\"custom_so_name\":\"").append(o.customSoName).append("\"")
+        append(",\"abis\":").append(
+            o.abis.joinToString(",", "[", "]") { "\"" + it + "\"" }
+        )
         append('}')
     }
 
@@ -180,5 +208,13 @@ class HardenClient(
     companion object {
         /** 加固服务与下载站同机，直接走 gcmod.bond（不经过 CDN） */
         const val BASE_URL = "https://gcmod.bond"
+
+        /** 架构选项：云镜里的「32位 / 64位 / 模拟器 / 实体机」映射到具体 ABI */
+        val ABI_CHOICES = listOf(
+            "arm64-v8a" to "64位真机",
+            "armeabi-v7a" to "32位真机",
+            "x86_64" to "64位模拟器",
+            "x86" to "32位模拟器",
+        )
     }
 }

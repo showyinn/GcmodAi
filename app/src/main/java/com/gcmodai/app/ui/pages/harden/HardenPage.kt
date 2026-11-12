@@ -106,6 +106,16 @@ fun HardenPage() {
     var antiDebug by remember { mutableStateOf(false) }
     // 加固模式：默认「标准」—— 不动代码逻辑，绝大多数包都安全
     var mode by remember { mutableStateOf("standard") }
+    // ---- 高级防护（对照云镜的「防护配置」）----
+    var rootCheck by remember { mutableStateOf(false) }
+    var hookCheck by remember { mutableStateOf(false) }
+    var proxyCheck by remember { mutableStateOf(false) }
+    var sigMd5 by remember { mutableStateOf("") }
+    var entryClass by remember { mutableStateOf("") }
+    var soName by remember { mutableStateOf("") }
+    var selectedAbis by remember { mutableStateOf(setOf("arm64-v8a")) }
+    var classRules by remember { mutableStateOf("") }
+    var showAdvanced by remember { mutableStateOf(false) }
 
     var busy by remember { mutableStateOf(false) }
     var scanning by remember { mutableStateOf(false) }
@@ -317,6 +327,111 @@ fun HardenPage() {
                             checked = antiDebug,
                             onChange = { antiDebug = it },
                         )
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+                        // ---- 高级防护：只在「深度加固」下生效的部分，折叠起来避免干扰 ----
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Column(Modifier.weight(1f)) {
+                                Text(
+                                    "防护配置（高级）",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.SemiBold,
+                                )
+                                Text(
+                                    "Root / Hook / 抓包 / 签名校验，注入自定义入口类与 so 名",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                            TextButton(onClick = { showAdvanced = !showAdvanced }) {
+                                Text(if (showAdvanced) "收起" else "展开")
+                            }
+                        }
+                        if (showAdvanced) {
+                            OptionRow(
+                                title = "Root 检测",
+                                desc = "检测 su 路径、test-keys、remount 特征，命中直接退出",
+                                checked = rootCheck,
+                                onChange = { rootCheck = it },
+                            )
+                            OptionRow(
+                                title = "Hook 检测",
+                                desc = "扫描 Xposed / LSPosed / Substrate / Zygisk / Frida 特征",
+                                checked = hookCheck,
+                                onChange = { hookCheck = it },
+                            )
+                            OptionRow(
+                                title = "抓包校验",
+                                desc = "检测系统代理与 mitmproxy / Charles / libpcap 特征",
+                                checked = proxyCheck,
+                                onChange = { proxyCheck = it },
+                            )
+                            OutlinedTextField(
+                                value = sigMd5,
+                                onValueChange = { sigMd5 = it },
+                                label = { Text("签名校验 MD5（可选，32 位小写）") },
+                                singleLine = true,
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                            OutlinedTextField(
+                                value = entryClass,
+                                onValueChange = { entryClass = it },
+                                label = { Text("入口类（可选，如 com.foo.App）") },
+                                supportingText = { Text("注入加载代码的落点，留空自动找 Application") },
+                                singleLine = true,
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                            OutlinedTextField(
+                                value = soName,
+                                onValueChange = { soName = it },
+                                label = { Text("自定义 so 名（可选，如 yjprotect）") },
+                                supportingText = { Text("dex2c 产物与守卫库都用这个名字，自动补 lib/ .so") },
+                                singleLine = true,
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                            Text(
+                                "架构选择",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.SemiBold,
+                                modifier = Modifier.padding(top = 4.dp),
+                            )
+                            Text(
+                                "每多选一个架构，处理时间会 +1 倍",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            FlowRow(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                HardenClient.ABI_CHOICES.forEach { (abi, label) ->
+                                    FilterChip(
+                                        selected = abi in selectedAbis,
+                                        onClick = {
+                                            selectedAbis = if (abi in selectedAbis) {
+                                                selectedAbis - abi
+                                            } else {
+                                                selectedAbis + abi
+                                            }
+                                        },
+                                        label = { Text(label) },
+                                    )
+                                }
+                            }
+                            OutlinedTextField(
+                                value = classRules,
+                                onValueChange = { classRules = it },
+                                label = { Text("保护类规则（每行一条）") },
+                                supportingText = {
+                                    Text("+com.foo.* 包含该包下所有类；-com.foo.Skip 排除；留空=按勾选")
+                                },
+                                minLines = 3,
+                                maxLines = 6,
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                        }
                         Text(
                             "零留存：源包反编译后立即删除，结果只存内存，下载一次即清除。",
                             style = MaterialTheme.typography.labelSmall,
@@ -460,6 +575,16 @@ fun HardenPage() {
                                             dex2cClasses = selectedDex.toList(),
                                             antiDebug = antiDebug,
                                             mode = mode,
+                                            rootCheck = rootCheck,
+                                            hookCheck = hookCheck,
+                                            proxyCheck = proxyCheck,
+                                            sigMd5 = sigMd5.trim().lowercase(),
+                                            customEntryClass = entryClass.trim(),
+                                            customSoName = soName.trim(),
+                                            abis = selectedAbis.toList(),
+                                            classRules = classRules.lines()
+                                                .map { it.trim() }
+                                                .filter { it.isNotEmpty() },
                                         )
                                         client.submit(data, opts)
                                             .onSuccess { id -> jobId = id; stateText = "已提交，等待服务器处理…" }
