@@ -2,6 +2,11 @@ package com.gcmodai.app.ui.components.ai
 
 import androidx.activity.compose.BackHandler
 import androidx.annotation.StringRes
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.background
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -14,10 +19,12 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.TextAutoSize
@@ -32,6 +39,7 @@ import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.ListItemShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SegmentedListItem
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -541,27 +549,43 @@ private class AttachmentAction(
     val onClick: () -> Unit,
 )
 
-// 附件入口：一行最多四个，再多就均分成两行
+/**
+ * 附件入口网格。
+ *
+ * 关键点：**所有格子尺寸必须完全一致**。
+ * 旧实现按 `(size+1)/2` 均分成两行，9 个入口会变成"上行 5 个 + 下行 4 个"，
+ * 每行都用 weight(1f) 平分宽度 —— 于是上行更窄、下行更宽，视觉上参差不齐。
+ *
+ * 现在固定列数（5 列），格子宽高由容器宽度算出来，最后一行不足列数时用等宽透明占位补齐，
+ * 这样 4 个入口是 4 个同尺寸格子、9 个入口是 9 个同尺寸格子，永远不会一大一小。
+ */
 @Composable
 private fun AttachmentGrid(
     actions: List<AttachmentAction>,
     modifier: Modifier = Modifier,
 ) {
-    val perRow = if (actions.size <= 4) actions.size else (actions.size + 1) / 2
-    Column(
-        modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        actions.chunked(perRow).fastForEach { row ->
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                row.fastForEach { action ->
-                    AttachmentTile(
-                        action = action,
-                        modifier = Modifier.weight(1f),
-                    )
+    val columns = 5
+    val spacing = 8.dp
+    val tileHeight = 92.dp
+
+    BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
+        // 用容器宽度精确算格子宽：宽度一致 → 高度再固定 → 所有格子完全同尺寸
+        val tileWidth = ((maxWidth - spacing * (columns - 1)) / columns).coerceAtLeast(48.dp)
+        Column(verticalArrangement = Arrangement.spacedBy(spacing)) {
+            actions.chunked(columns).fastForEach { row ->
+                Row(horizontalArrangement = Arrangement.spacedBy(spacing)) {
+                    row.fastForEach { action ->
+                        AttachmentTile(
+                            action = action,
+                            modifier = Modifier
+                                .width(tileWidth)
+                                .height(tileHeight),
+                        )
+                    }
+                    // 补齐末行空位，保证每格宽度与上一行完全对齐
+                    repeat(columns - row.size) {
+                        Spacer(Modifier.width(tileWidth).height(tileHeight))
+                    }
                 }
             }
         }
@@ -573,32 +597,44 @@ private fun AttachmentTile(
     action: AttachmentAction,
     modifier: Modifier = Modifier,
 ) {
-    FilledTonalButton(
+    // 统一成 tonal Surface：比 FilledTonalButton 更容易控制等宽等高，
+    // 也不用担心按钮的最小尺寸/内边距把格子撑变形。
+    Surface(
         onClick = action.onClick,
-        // 按下时圆角收紧
-        shapes = ButtonDefaults.shapes(
-            shape = MaterialTheme.shapes.extraLarge,
-            pressedShape = MaterialTheme.shapes.medium,
-        ),
-        modifier = modifier.heightIn(min = 88.dp),
-        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 16.dp),
+        modifier = modifier,
+        shape = RoundedCornerShape(26.dp),
+        color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.55f),
+        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
     ) {
         Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 4.dp, vertical = 10.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.Center,
         ) {
-            Icon(
-                imageVector = action.icon,
-                contentDescription = null,
-                modifier = Modifier.size(28.dp),
-            )
+            Box(
+                modifier = Modifier
+                    .size(34.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(MaterialTheme.colorScheme.secondaryContainer),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = action.icon,
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp),
+                )
+            }
+            Spacer(Modifier.height(8.dp))
             Text(
                 text = stringResource(action.label),
-                // 四个并排时较长的译文放不下，自动缩小字号
-                autoSize = TextAutoSize.StepBased(minFontSize = 11.sp, maxFontSize = 14.sp),
+                // 五列并排时较长译文放不下，交给 autoSize 统一缩字号，保证每格文字块高度一致
+                autoSize = TextAutoSize.StepBased(minFontSize = 10.sp, maxFontSize = 12.sp),
                 maxLines = 1,
                 softWrap = false,
                 overflow = TextOverflow.Ellipsis,
+                style = MaterialTheme.typography.labelMedium,
             )
         }
     }

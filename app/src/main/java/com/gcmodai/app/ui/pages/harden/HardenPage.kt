@@ -52,11 +52,13 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -92,6 +94,8 @@ fun HardenPage() {
     val filesManager: FilesManager = koinInject()
     val navController = com.gcmodai.app.ui.context.LocalNavController.current
     val scope = rememberCoroutineScope()
+    val toaster = com.gcmodai.app.ui.context.LocalToaster.current
+    val clipboard = androidx.compose.ui.platform.LocalClipboardManager.current
 
     var apkName by remember { mutableStateOf<String?>(null) }
     var apkBytes by remember { mutableStateOf<ByteArray?>(null) }
@@ -236,9 +240,58 @@ fun HardenPage() {
             item("hero") {
                 HeroCard(
                     apkName = apkName,
-                    sizeText = apkBytes?.let { "${it.size / 1024 / 1024} MB" },
+                    sizeText = apkBytes?.let { "%.1f MB".format(it.size / 1024f / 1024f) },
                     running = busy || scanning,
+                    status = when {
+                        busy || scanning -> "处理中"
+                        resultBytes != null -> "已完成"
+                        stateText.startsWith("提交失败") || stateText.startsWith("失败") -> "失败"
+                        else -> null
+                    },
+                    statusDetail = if (resultBytes != null) savedInfo else stateText.ifBlank { null },
                 )
+            }
+
+            // ---------------- 功能选择（对照云镜）：一眼看清这单开了什么 ----------------
+            item("features") {
+                Md3Panel(
+                    modifier = Modifier.fillMaxWidth(),
+                    radius = 22.dp,
+                    contentPadding = PaddingValues(14.dp),
+                ) {
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Text(
+                            "功能选择",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            val chips: List<Triple<String, Boolean, (Boolean) -> Unit>> = listOf(
+                                Triple("应用防护", stripDebug) { v: Boolean -> stripDebug = v },
+                                Triple("SO 加固", stripSo) { v: Boolean -> stripSo = v },
+                                Triple("反调试", antiDebug) { v: Boolean -> antiDebug = v },
+                                Triple("Root 检测", rootCheck) { v: Boolean -> rootCheck = v },
+                                Triple("Hook 检测", hookCheck) { v: Boolean -> hookCheck = v },
+                                Triple("抓包校验", proxyCheck) { v: Boolean -> proxyCheck = v },
+                            )
+                            chips.forEach { (label, selected, onToggle) ->
+                                FilterChip(
+                                    selected = selected,
+                                    onClick = { onToggle(!selected) },
+                                    label = { Text(label) },
+                                )
+                            }
+                        }
+                        Text(
+                            "提示：签名校验需要填 32 位小写 MD5（下方「防护配置（高级）」里）",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
             }
 
             // ---------------- 选择与选项 ----------------
@@ -655,11 +708,25 @@ fun HardenPage() {
 
             if (logs.isNotEmpty()) {
                 item("logtitle") {
-                    Text(
-                        "服务器日志",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold,
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            "服务器日志",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.weight(1f),
+                        )
+                        TextButton(
+                            onClick = {
+                                clipboard.setText(AnnotatedString(logs.joinToString("\n")))
+                                toaster.show("日志已复制")
+                            }
+                        ) {
+                            Text("复制日志")
+                        }
+                    }
                 }
                 item("log") {
                     Md3Panel(
@@ -688,71 +755,137 @@ fun HardenPage() {
 }
 
 @Composable
-private fun HeroCard(apkName: String?, sizeText: String?, running: Boolean) {
+private fun HeroCard(
+    apkName: String?,
+    sizeText: String?,
+    running: Boolean,
+    status: String? = null,
+    statusDetail: String? = null,
+) {
     val colors = MaterialTheme.colorScheme
-    // 顶部主卡片：玻璃底 + 主题色渐变染色。以前是纯渐变填充（一块不透明色板），
-    // 现在渐变只当"玻璃上的染色"，底下仍然是壁纸在折射，和整站风格统一。
+    GlasslessHero(
+        apkName = apkName,
+        sizeText = sizeText,
+        running = running,
+        status = status,
+        statusDetail = statusDetail,
+        colors = colors,
+    )
+}
+
+/**
+ * 顶部目标卡片（云镜式）：左侧图标 + 目标名 + 三行状态信息，右侧状态徽章。
+ *
+ * 用 tonal 渐变而不是纯色块：既保持"控制台"的稳重感，也不会像纯色卡片那样死板。
+ */
+@Composable
+private fun GlasslessHero(
+    apkName: String?,
+    sizeText: String?,
+    running: Boolean,
+    status: String?,
+    statusDetail: String?,
+    colors: androidx.compose.material3.ColorScheme,
+) {
     Md3Panel(
-        modifier = Modifier
-            .fillMaxWidth(),
-        radius = 26.dp,
+        modifier = Modifier.fillMaxWidth(),
+        radius = 24.dp,
+        containerColor = colors.surfaceContainerHigh,
+        contentPadding = PaddingValues(0.dp),
     ) {
         Box(
             Modifier
                 .fillMaxWidth()
                 .background(
-                    brush = Brush.linearGradient(
+                    Brush.linearGradient(
                         listOf(
-                            colors.primaryContainer.copy(alpha = 0.55f),
-                            colors.secondaryContainer.copy(alpha = 0.35f),
+                            colors.primaryContainer.copy(alpha = 0.50f),
+                            colors.tertiaryContainer.copy(alpha = 0.28f),
                         )
                     )
                 )
-                .padding(18.dp),
+                .padding(16.dp),
         ) {
-        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Surface(
-                    shape = RoundedCornerShape(14.dp),
-                    color = colors.surface.copy(alpha = 0.35f),
-                ) {
-                    Icon(
-                        HugeIcons.Shield01,
-                        contentDescription = null,
-                        modifier = Modifier.padding(8.dp).size(22.dp),
-                    )
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(46.dp)
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(colors.surface.copy(alpha = 0.55f)),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            HugeIcons.Shield01,
+                            contentDescription = null,
+                            modifier = Modifier.size(24.dp),
+                            tint = colors.primary,
+                        )
+                    }
+                    Spacer(Modifier.width(12.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            "APK 加固",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                        )
+                        Text(
+                            "反编译 · 混淆 · dex2c · 重打包 · 签名",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = colors.onSurfaceVariant,
+                        )
+                    }
+                    if (status != null) {
+                        Surface(
+                            shape = RoundedCornerShape(50),
+                            color = when (status) {
+                                "已完成" -> colors.primary
+                                "失败" -> colors.errorContainer
+                                else -> colors.secondaryContainer
+                            },
+                            contentColor = when (status) {
+                                "已完成" -> colors.onPrimary
+                                "失败" -> colors.onErrorContainer
+                                else -> colors.onSecondaryContainer
+                            },
+                        ) {
+                            Text(
+                                status,
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                        }
+                    }
                 }
-                Spacer(Modifier.width(10.dp))
-                Column {
-                    Text(
-                        "服务器加固",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                    )
-                    Text(
-                        "反编译 · 混淆 · 重打包 · 签名",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = colors.onSurfaceVariant,
-                    )
-                }
+                HorizontalDivider(color = colors.outlineVariant.copy(alpha = 0.35f))
+                InfoLine("目标", apkName ?: "尚未选择安装包")
+                InfoLine("大小", sizeText ?: "支持任意 APK（≤240MB）")
+                InfoLine(
+                    "策略",
+                    if (running) "处理中…" else (statusDetail ?: "结果零留存 · 下载一次即清除"),
+                )
             }
-            Spacer(Modifier.height(2.dp))
-            Text(
-                apkName ?: "还没有选择安装包",
-                style = MaterialTheme.typography.bodyMedium,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Text(
-                buildString {
-                    append(sizeText ?: "支持任意 APK（≤240MB）")
-                    if (running) append("  ·  处理中") else append("  ·  结果零留存")
-                },
-                style = MaterialTheme.typography.labelSmall,
-                color = colors.onSurfaceVariant,
-            )
         }
-        }
+    }
+}
+
+@Composable
+private fun InfoLine(label: String, value: String) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            label,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.width(40.dp),
+        )
+        Text(
+            value,
+            style = MaterialTheme.typography.bodySmall,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f),
+        )
     }
 }
 
