@@ -101,6 +101,8 @@ fun HardenPage() {
     var keyPass by remember { mutableStateOf("") }
     var stripDebug by remember { mutableStateOf(true) }
     var stripSo by remember { mutableStateOf(true) }
+    // 反调试守卫：默认关闭。自己用 Studio 调试时装上会直接退出，属于预期行为。
+    var antiDebug by remember { mutableStateOf(false) }
 
     var busy by remember { mutableStateOf(false) }
     var scanning by remember { mutableStateOf(false) }
@@ -271,6 +273,13 @@ fun HardenPage() {
                             checked = stripSo,
                             onChange = { stripSo = it },
                         )
+                        OptionRow(
+                            title = "反调试保护",
+                            desc = "注入 libGcmodGuard.so：ptrace / TracerPid / Frida 三重检测，命中直接退出。" +
+                                "自己用 Studio 调试时不要开。",
+                            checked = antiDebug,
+                            onChange = { antiDebug = it },
+                        )
                         Text(
                             "零留存：源包反编译后立即删除，结果只存内存，下载一次即清除。",
                             style = MaterialTheme.typography.labelSmall,
@@ -412,6 +421,7 @@ fun HardenPage() {
                                             keyPass = keyPass,
                                             obfuscateClasses = selectedObf.toList(),
                                             dex2cClasses = selectedDex.toList(),
+                                            antiDebug = antiDebug,
                                         )
                                         client.submit(data, opts)
                                             .onSuccess { id -> jobId = id; stateText = "已提交，等待服务器处理…" }

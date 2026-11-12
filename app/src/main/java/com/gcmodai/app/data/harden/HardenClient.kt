@@ -34,6 +34,8 @@ class HardenClient(
         val obfuscateClasses: List<String> = emptyList(),
         /** 勾选要 dex2c 抽取到 native 的类描述符 */
         val dex2cClasses: List<String> = emptyList(),
+        /** 反调试守卫：注入 libGcmodGuard.so（ptrace / TracerPid / Frida 三重检测，命中即退出） */
+        val antiDebug: Boolean = false,
         /** 用你自己的签名证书，加固后的包才能覆盖安装（不传则用服务器证书，需卸载重装） */
         val keystore: ByteArray? = null,
         val keystorePass: String = "",
@@ -82,6 +84,7 @@ class HardenClient(
         append(",\"dex2c_classes\":").append(
             o.dex2cClasses.joinToString(",", "[", "]") { "\"" + it + "\"" }
         )
+        append(",\"anti_debug\":").append(o.antiDebug)
         append('}')
     }
 
