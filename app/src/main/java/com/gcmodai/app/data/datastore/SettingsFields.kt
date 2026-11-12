@@ -79,6 +79,10 @@ internal val SETTINGS_FIELDS: List<SettingsField<*, *>> = with(SettingsStore) {
         plain(DYNAMIC_COLOR, Settings::dynamicColor) { copy(dynamicColor = it) },
         plain(THEME_ID, Settings::themeId) { copy(themeId = it) },
         json(CUSTOM_THEMES, Settings::customThemes) { copy(customThemes = it) },
+        // 液态玻璃外观（强度 / 壁纸风格 / 是否流动）
+        plain(GLASS_LEVEL, Settings::glassLevel) { copy(glassLevel = it) },
+        plain(GLASS_WALLPAPER, Settings::glassWallpaper) { copy(glassWallpaper = it) },
+        plain(GLASS_ANIMATED, Settings::glassAnimated) { copy(glassAnimated = it) },
         json(DISPLAY_SETTING, Settings::displaySetting) { copy(displaySetting = it) },
         json(NETWORK_SETTING, Settings::networkSetting) { copy(networkSetting = it) },
         plain(DEVELOPER_MODE, Settings::developerMode) { copy(developerMode = it) },

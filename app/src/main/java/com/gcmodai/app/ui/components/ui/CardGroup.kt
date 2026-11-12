@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -45,6 +46,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.fastForEachIndexed
+import com.gcmodai.app.ui.glass.GlassCard
 import com.gcmodai.app.ui.theme.CustomColors
 
 private val CardGroupCorner = 20.dp
@@ -231,42 +233,40 @@ private fun CardGroupFormItem(
     count: Int,
     index: Int,
 ) {
-    Surface(
-        modifier = item.modifier.fillMaxWidth(),
-        shape = cardGroupItemShape(index, count),
-        color = CustomColors.listItemColors.containerColor,
+    // 液态玻璃版本：整组是一块玻璃，行与行之间不再各自铺底色，
+    // 否则每行都是一个独立 Surface，玻璃会被切成一条一条。
+    Column(
+        modifier = item.modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Column(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            if (item.headlineContent != null || item.leadingContent != null || item.trailingContent != null) {
-                Row(
-                    // 和 ListItem 一致：带说明文字时，两侧内容靠上对齐
-                    verticalAlignment = if (item.supportingContent != null) Alignment.Top else Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+        if (item.headlineContent != null || item.leadingContent != null || item.trailingContent != null) {
+            Row(
+                // 和 ListItem 一致：带说明文字时，两侧内容靠上对齐
+                verticalAlignment = if (item.supportingContent != null) Alignment.Top else Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
+                item.leadingContent?.invoke()
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(2.dp),
                 ) {
-                    item.leadingContent?.invoke()
-                    Column(
-                        modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(2.dp),
-                    ) {
-                        item.headlineContent?.let { headline ->
-                            ProvideTextStyle(MaterialTheme.typography.bodyLarge, headline)
-                        }
-                        item.supportingContent?.let { supporting ->
-                            CompositionLocalProvider(
-                                LocalContentColor provides MaterialTheme.colorScheme.onSurfaceVariant
-                            ) {
-                                ProvideTextStyle(MaterialTheme.typography.bodyMedium, supporting)
-                            }
+                    item.headlineContent?.let { headline ->
+                        ProvideTextStyle(MaterialTheme.typography.bodyLarge, headline)
+                    }
+                    item.supportingContent?.let { supporting ->
+                        CompositionLocalProvider(
+                            LocalContentColor provides MaterialTheme.colorScheme.onSurfaceVariant
+                        ) {
+                            ProvideTextStyle(MaterialTheme.typography.bodyMedium, supporting)
                         }
                     }
-                    item.trailingContent?.invoke()
                 }
+                item.trailingContent?.invoke()
             }
-            formContent()
         }
+        formContent()
     }
 }
 
@@ -276,37 +276,14 @@ private fun CardGroupListItem(
     count: Int,
     index: Int,
 ) {
-    val isFirst = index == 0
-    val isLast = index == count - 1
-
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
-
-    val topCorner by animateDpAsState(
-        targetValue = if (isPressed || count == 1 || isFirst) CardGroupCorner else CardGroupInnerCorner,
-        animationSpec = MaterialTheme.motionScheme.fastSpatialSpec(),
-    )
-    val bottomCorner by animateDpAsState(
-        targetValue = if (isPressed || count == 1 || isLast) CardGroupCorner else CardGroupInnerCorner,
-        animationSpec = MaterialTheme.motionScheme.fastSpatialSpec(),
-    )
-
     ListItem(
         headlineContent = item.headlineContent ?: {},
         modifier = item.modifier
             .fillMaxWidth()
-            .clip(
-                RoundedCornerShape(
-                    topStart = topCorner,
-                    topEnd = topCorner,
-                    bottomStart = bottomCorner,
-                    bottomEnd = bottomCorner,
-                )
-            )
             .then(
                 if (item.onClick != null) {
                     Modifier.clickable(
-                        interactionSource = interactionSource,
+                        interactionSource = remember { MutableInteractionSource() },
                         indication = LocalIndication.current,
                         onClick = item.onClick,
                     )
@@ -320,6 +297,15 @@ private fun CardGroupListItem(
     )
 }
 
+/**
+ * 设置页的分组卡片 —— 液态玻璃版。
+ *
+ * 结构变了：以前每行是一个独立 Surface（圆角随按下动画变化），
+ * 现在整组是一块玻璃，行只是玻璃上的文本行。这样玻璃的折射是整块的，
+ * 不会因为行与行之间的缝隙断成一截一截。
+ *
+ * 调用方式完全没变（`CardGroup { item(...) }`），所以所有设置页自动升级。
+ */
 @Composable
 fun CardGroup(
     modifier: Modifier = Modifier,
@@ -329,26 +315,29 @@ fun CardGroup(
     val scope = CardGroupScopeImpl()
     scope.content()
 
-    Column(modifier = modifier) {
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
         if (title != null) {
             CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.primary) {
                 ProvideTextStyle(MaterialTheme.typography.titleSmallEmphasized) {
-                    Box(modifier = Modifier.padding(start = 4.dp, top = 8.dp, bottom = 8.dp)) {
+                    Box(modifier = Modifier.padding(start = 8.dp, top = 8.dp, bottom = 2.dp)) {
                         title()
                     }
                 }
             }
         }
-        val count = scope.items.size
-        scope.items.fastForEachIndexed { index, item ->
-            val formContent = item.formContent
-            if (formContent != null) {
-                CardGroupFormItem(item = item, formContent = formContent, count = count, index = index)
-            } else {
-                CardGroupListItem(item = item, count = count, index = index)
-            }
-            if (index != count - 1) {
-                Spacer(modifier = Modifier.height(CardGroupItemSpacing))
+        GlassCard(
+            modifier = Modifier.fillMaxWidth(),
+            contentPadding = PaddingValues(vertical = 4.dp),
+            verticalArrangement = Arrangement.spacedBy(0.dp),
+        ) {
+            val count = scope.items.size
+            scope.items.fastForEachIndexed { index, item ->
+                val formContent = item.formContent
+                if (formContent != null) {
+                    CardGroupFormItem(item = item, formContent = formContent, count = count, index = index)
+                } else {
+                    CardGroupListItem(item = item, count = count, index = index)
+                }
             }
         }
     }

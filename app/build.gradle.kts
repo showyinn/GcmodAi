@@ -26,8 +26,8 @@ android {
         applicationId = "com.gcmodai.app"
         minSdk = 26
         targetSdk = 37
-        versionCode = 255
-        versionName = "3.9.20"
+        versionCode = 256
+        versionName = "3.9.21"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -263,6 +263,10 @@ dependencies {
     implementation(libs.haze.blur.material3)
     implementation(libs.haze.glass)
     implementation(libs.haze.glass.material3)
+
+    // 液态玻璃（Kyant0/AndroidLiquidGlass）：drawBackdrop + 折射/模糊/高光/内外阴影
+    implementation(libs.kyant.backdrop)
+    implementation(libs.kyant.shapes)
 
     // koin
     implementation(platform(libs.koin.bom))

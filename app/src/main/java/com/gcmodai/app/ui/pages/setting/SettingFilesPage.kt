@@ -95,6 +95,7 @@ import com.gcmodai.app.data.files.FileFolders
 import com.gcmodai.app.data.files.FilesManager
 import com.gcmodai.app.ui.components.ai.ExtensionEmptyState
 import com.gcmodai.app.ui.components.nav.BackButton
+import com.gcmodai.app.ui.glass.GlassPanel
 import com.gcmodai.app.ui.components.ui.CardGroup
 import com.gcmodai.app.ui.context.LocalToaster
 import com.gcmodai.app.ui.theme.CustomColors
@@ -422,10 +423,9 @@ private fun FileItem(
     onOpenWith: () -> Unit = {},
     onShare: () -> Unit = {},
 ) {
-    Surface(
+    GlassPanel(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(FileItemCorner),
-        color = CustomColors.listItemColors.containerColor,
+        radius = FileItemCorner,
     ) {
         Column {
             Box(
@@ -435,7 +435,7 @@ private fun FileItem(
                     .padding(FileItemPreviewInset)
                     // 预览图内缩一圈，圆角跟着减小，和卡片外沿保持同心
                     .clip(RoundedCornerShape(FileItemCorner - FileItemPreviewInset))
-                    .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                    .background(MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.35f))
             ) {
                 if (file.mimeType.startsWith("image/")) {
                     AsyncImage(

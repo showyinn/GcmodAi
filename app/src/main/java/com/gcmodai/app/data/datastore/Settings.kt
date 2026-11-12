@@ -33,6 +33,12 @@ data class Settings(
     val dynamicColor: Boolean = true,
     val themeId: String = PresetThemes[0].id,
     val customThemes: List<CustomTheme> = emptyList(),
+    /** 液态玻璃强度：0=轻薄 1=标准 2=浓稠 */
+    val glassLevel: Int = 1,
+    /** 液态玻璃壁纸风格，对应 WallpaperStyle 的序号 */
+    val glassWallpaper: Int = 0,
+    /** 壁纸是否缓慢流动（关掉更省电） */
+    val glassAnimated: Boolean = true,
     val developerMode: Boolean = false,
     val displaySetting: DisplaySetting = DisplaySetting(),
     val networkSetting: NetworkSetting = NetworkSetting(),

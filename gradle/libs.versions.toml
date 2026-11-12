@@ -46,6 +46,9 @@ pebble = "4.1.1"
 browser = "1.10.0"
 floatingx = "3.0.0"
 haze = "2.0.1"
+# 液态玻璃（Kyant0/AndroidLiquidGlass → io.github.kyant0:backdrop）
+kyantBackdrop = "2.0.1"
+kyantShapes = "1.2.1"
 uiautomator = "2.4.0"
 benchmarkMacroJunit4 = "1.5.0"
 baselineprofile = "1.5.0"
@@ -157,6 +160,9 @@ haze-blur = { module = "dev.chrisbanes.haze:haze-blur", version.ref = "haze" }
 haze-blur-material3 = { module = "dev.chrisbanes.haze:haze-blur-material3", version.ref = "haze" }
 haze-glass = { module = "dev.chrisbanes.haze:haze-glass", version.ref = "haze" }
 haze-glass-material3 = { module = "dev.chrisbanes.haze:haze-glass-material3", version.ref = "haze" }
+# 液态玻璃：backdrop 提供 drawBackdrop 效果，shapes 提供 Capsule/平滑圆角
+kyant-backdrop = { group = "io.github.kyant0", name = "backdrop", version.ref = "kyantBackdrop" }
+kyant-shapes = { group = "io.github.kyant0", name = "shapes", version.ref = "kyantShapes" }
 androidx-uiautomator = { group = "androidx.test.uiautomator", name = "uiautomator", version.ref = "uiautomator" }
 androidx-benchmark-macro-junit4 = { group = "androidx.benchmark", name = "benchmark-macro-junit4", version.ref = "benchmarkMacroJunit4" }
 androidx-profileinstaller = { group = "androidx.profileinstaller", name = "profileinstaller", version.ref = "profileinstaller" }

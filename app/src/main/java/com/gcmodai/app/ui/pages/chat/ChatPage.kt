@@ -333,8 +333,10 @@ private fun ChatPageContent(
 
     TTSAutoPlay(vm = vm, setting = setting, conversation = conversation)
 
+    // 液态玻璃：聊天页不再自己铺一层不透明底色，壁纸从外层 GlassHost 透上来，
+    // 顶栏和输入栏都是浮在壁纸上的玻璃块；助手背景只管装饰性光晕。
     Surface(
-        color = MaterialTheme.colorScheme.background,
+        color = Color.Transparent,
         modifier = Modifier.fillMaxSize()
     ) {
         AssistantBackground(setting = setting, modifier = Modifier.hazeSource(hazeState))

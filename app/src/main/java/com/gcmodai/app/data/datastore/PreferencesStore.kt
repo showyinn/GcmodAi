@@ -110,6 +110,10 @@ class SettingsStore internal constructor(
         val DYNAMIC_COLOR = booleanPreferencesKey("dynamic_color")
         val THEME_ID = stringPreferencesKey("theme_id")
         val CUSTOM_THEMES = stringPreferencesKey("custom_themes")
+        // 液态玻璃外观
+        val GLASS_LEVEL = intPreferencesKey("glass_level")
+        val GLASS_WALLPAPER = intPreferencesKey("glass_wallpaper")
+        val GLASS_ANIMATED = booleanPreferencesKey("glass_animated")
         val DISPLAY_SETTING = stringPreferencesKey("display_setting")
         val NETWORK_SETTING = stringPreferencesKey("network_setting")
         val DEVELOPER_MODE = booleanPreferencesKey("developer_mode")

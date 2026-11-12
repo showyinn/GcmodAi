@@ -53,6 +53,8 @@ import com.gcmodai.app.data.files.FileFolders
 import com.gcmodai.app.data.files.FilesManager
 import com.gcmodai.app.data.media.MediaProbeClient
 import com.gcmodai.app.ui.components.nav.BackButton
+import com.gcmodai.app.ui.glass.GlassCard
+import com.gcmodai.app.ui.glass.GlassPanel
 import com.gcmodai.app.ui.context.LocalToaster
 import com.gcmodai.app.ui.theme.CustomColors
 import com.gcmodai.app.utils.FileExporter
@@ -162,12 +164,7 @@ fun MediaToolPage(
             }
 
             info?.let { media ->
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                    ),
-                ) {
+                GlassCard(modifier = Modifier.fillMaxWidth(), radius = 24.dp, contentPadding = PaddingValues(16.dp)) {
                     Column(
                         modifier = Modifier.padding(16.dp),
                         verticalArrangement = Arrangement.spacedBy(6.dp),
@@ -282,12 +279,7 @@ fun MediaToolPage(
             }
 
             audioTrack?.let { track ->
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                    ),
-                ) {
+                GlassCard(modifier = Modifier.fillMaxWidth(), radius = 24.dp, contentPadding = PaddingValues(16.dp)) {
                     Column(
                         modifier = Modifier.padding(16.dp),
                         verticalArrangement = Arrangement.spacedBy(6.dp),
@@ -313,20 +305,24 @@ fun MediaToolPage(
 
 @Composable
 private fun HeroPanel(onPick: () -> Unit, fileName: String?, busy: Boolean) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(24.dp))
-            .background(
-                Brush.linearGradient(
-                    listOf(
-                        MaterialTheme.colorScheme.primaryContainer,
-                        MaterialTheme.colorScheme.tertiaryContainer,
+    // 主视觉：玻璃底 + 主题色渐变染色
+    GlassPanel(
+        modifier = Modifier.fillMaxWidth(),
+        radius = 26.dp,
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(
+                    Brush.linearGradient(
+                        listOf(
+                            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f),
+                            MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.38f),
+                        )
                     )
                 )
-            )
-            .padding(20.dp),
-    ) {
+                .padding(20.dp),
+        ) {
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
@@ -359,6 +355,7 @@ private fun HeroPanel(onPick: () -> Unit, fileName: String?, busy: Boolean) {
                 Icon(HugeIcons.Music, contentDescription = null, modifier = Modifier.size(18.dp))
                 Text("  选择文件")
             }
+        }
         }
     }
 }

@@ -66,16 +66,25 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import me.rerere.hugeicons.HugeIcons
 import me.rerere.hugeicons.stroke.Delete01
+import me.rerere.hugeicons.stroke.Droplet
 import me.rerere.hugeicons.stroke.FileImport
+import me.rerere.hugeicons.stroke.PaintBrush01
 import me.rerere.hugeicons.stroke.PencilEdit01
 import me.rerere.hugeicons.stroke.PlusSign
 import me.rerere.hugeicons.stroke.Share03
 import me.rerere.hugeicons.stroke.Tick01
 import com.gcmodai.app.R
 import com.gcmodai.app.ui.components.nav.BackButton
+import com.gcmodai.app.ui.components.ui.CardGroup
+import com.gcmodai.app.ui.components.ui.ConnectedChoiceLabel
+import com.gcmodai.app.ui.components.ui.ConnectedMultiChoiceButtons
 import com.gcmodai.app.ui.components.ui.ItemAction
 import com.gcmodai.app.ui.components.ui.ItemActionMenu
+import com.gcmodai.app.ui.components.ui.switchItem
 import com.gcmodai.app.ui.context.LocalToaster
+import com.gcmodai.app.ui.glass.GlassCard
+import com.gcmodai.app.ui.glass.GlassSpec
+import com.gcmodai.app.ui.glass.WallpaperStyle
 import com.gcmodai.app.ui.pages.setting.components.PresetThemeButtonGroup
 import com.gcmodai.app.ui.theme.CustomColors
 import com.gcmodai.app.ui.theme.CustomTheme
@@ -152,11 +161,10 @@ fun SettingThemePage(vm: SettingVM = koinViewModel()) {
                             color = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.padding(start = 4.dp, top = 8.dp, bottom = 8.dp)
                         )
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(20.dp))
-                                .background(MaterialTheme.colorScheme.surfaceBright)
+                        GlassCard(
+                            modifier = Modifier.fillMaxWidth(),
+                            contentPadding = PaddingValues(4.dp),
+                            verticalArrangement = Arrangement.spacedBy(0.dp),
                         ) {
                             PresetThemeButtonGroup(
                                 themeId = settings.themeId,
@@ -169,7 +177,60 @@ fun SettingThemePage(vm: SettingVM = koinViewModel()) {
                     }
                 }
 
-                item("customThemesHeader") {
+                item("glassAppearance") {
+                CardGroup(
+                    title = { Text("液态玻璃外观") },
+                ) {
+                    formItem(
+                        headlineContent = { Text("玻璃强度") },
+                        supportingContent = { Text(glassLevelLabel(settings.glassLevel)) },
+                    ) {
+                        ConnectedMultiChoiceButtons(
+                            options = GlassSpec.Levels.indices.toList(),
+                            selected = listOf(settings.glassLevel.coerceIn(0, GlassSpec.Levels.lastIndex)),
+                            onToggle = { level, _ ->
+                                vm.updateSettings { it.copy(glassLevel = level) }
+                            },
+                        ) { level, selected ->
+                            ConnectedChoiceLabel(
+                                text = levelLabel(level),
+                                selected = selected,
+                                icon = HugeIcons.Droplet,
+                            )
+                        }
+                    }
+                    formItem(
+                        headlineContent = { Text("壁纸风格") },
+                        supportingContent = { Text(wallpaperLabel(settings.glassWallpaper)) },
+                    ) {
+                        ConnectedMultiChoiceButtons(
+                            options = WallpaperStyle.entries.indices.toList(),
+                            selected = listOf(
+                                settings.glassWallpaper.coerceIn(0, WallpaperStyle.entries.lastIndex)
+                            ),
+                            onToggle = { style, _ ->
+                                vm.updateSettings { it.copy(glassWallpaper = style) }
+                            },
+                        ) { style, selected ->
+                            ConnectedChoiceLabel(
+                                text = wallpaperShortLabel(style),
+                                selected = selected,
+                                icon = HugeIcons.PaintBrush01,
+                            )
+                        }
+                    }
+                    switchItem(
+                        checked = settings.glassAnimated,
+                        onCheckedChange = { animated ->
+                            vm.updateSettings { it.copy(glassAnimated = animated) }
+                        },
+                        headlineContent = { Text("壁纸缓慢流动") },
+                        supportingContent = { Text("关掉更省电，静止壁纸同样有玻璃折射") },
+                    )
+                }
+            }
+
+            item("customThemesHeader") {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -306,6 +367,38 @@ fun SettingThemePage(vm: SettingVM = koinViewModel()) {
             Text(stringResource(R.string.setting_theme_page_delete_theme_message))
         }
     )
+}
+
+// ---------------------------------------------------------------- 玻璃外观文案
+
+private fun levelLabel(level: Int): String = when (level) {
+    0 -> "轻薄"
+    2 -> "浓稠"
+    else -> "标准"
+}
+
+private fun glassLevelLabel(level: Int): String = when (level) {
+    0 -> "模糊 8 / 折射 6：最清爽，低端机也稳"
+    2 -> "模糊 26 / 折射 20：最像果冻，字要对准"
+    else -> "模糊 16 / 折射 12：默认，效果和性能平衡"
+}
+
+private fun wallpaperShortLabel(style: Int): String = when (
+    WallpaperStyle.entries[style.coerceIn(0, WallpaperStyle.entries.lastIndex)]
+) {
+    WallpaperStyle.AURORA -> "极光"
+    WallpaperStyle.MESH -> "网格"
+    WallpaperStyle.SILK -> "丝绸"
+    WallpaperStyle.SOLID -> "纯色"
+}
+
+private fun wallpaperLabel(style: Int): String = when (
+    WallpaperStyle.entries[style.coerceIn(0, WallpaperStyle.entries.lastIndex)]
+) {
+    WallpaperStyle.AURORA -> "大色团斜向流动，玻璃折射层次最丰富"
+    WallpaperStyle.MESH -> "多色光球叠在深底上，颗粒感强"
+    WallpaperStyle.SILK -> "细长条带，像布料褶皱，最安静"
+    WallpaperStyle.SOLID -> "只用主题色做柔和渐变，最省电"
 }
 
 @Composable

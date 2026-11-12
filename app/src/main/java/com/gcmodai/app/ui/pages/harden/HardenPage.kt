@@ -64,6 +64,8 @@ import com.gcmodai.app.data.files.FileFolders
 import com.gcmodai.app.data.files.FilesManager
 import com.gcmodai.app.data.harden.HardenClient
 import com.gcmodai.app.ui.components.nav.BackButton
+import com.gcmodai.app.ui.glass.GlassCard
+import com.gcmodai.app.ui.glass.GlassPanel
 import com.gcmodai.app.ui.theme.CustomColors
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -227,7 +229,7 @@ fun HardenPage() {
 
             // ---------------- 选择与选项 ----------------
             item("pick") {
-                Card(shape = RoundedCornerShape(20.dp)) {
+                GlassCard(modifier = Modifier.fillMaxWidth(), radius = 22.dp, contentPadding = PaddingValues(16.dp)) {
                     Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         FlowRow(
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -282,7 +284,7 @@ fun HardenPage() {
             // ---------------- 签名参数 ----------------
             if (ksBytes != null) {
                 item("ks") {
-                    Card(shape = RoundedCornerShape(20.dp)) {
+                    GlassCard(modifier = Modifier.fillMaxWidth(), radius = 22.dp, contentPadding = PaddingValues(16.dp)) {
                         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Text("签名证书参数", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -309,7 +311,7 @@ fun HardenPage() {
 
             // ---------------- 类选择 ----------------
             item("scan") {
-                Card(shape = RoundedCornerShape(20.dp)) {
+                GlassCard(modifier = Modifier.fillMaxWidth(), radius = 22.dp, contentPadding = PaddingValues(16.dp)) {
                     Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(
@@ -388,7 +390,7 @@ fun HardenPage() {
 
             // ---------------- 执行与结果 ----------------
             item("run") {
-                Card(shape = RoundedCornerShape(20.dp)) {
+                GlassCard(modifier = Modifier.fillMaxWidth(), radius = 22.dp, contentPadding = PaddingValues(16.dp)) {
                     Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                             Button(
@@ -488,11 +490,10 @@ fun HardenPage() {
                     )
                 }
                 item("log") {
-                    Card(
-                        shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-                        ),
+                    GlassCard(
+                        modifier = Modifier.fillMaxWidth(),
+                        radius = 16.dp,
+                        contentPadding = PaddingValues(12.dp),
                     ) {
                         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                             logs.forEach { line ->
@@ -517,20 +518,26 @@ fun HardenPage() {
 @Composable
 private fun HeroCard(apkName: String?, sizeText: String?, running: Boolean) {
     val colors = MaterialTheme.colorScheme
-    Box(
-        Modifier
-            .fillMaxWidth()
-            .background(
-                brush = Brush.linearGradient(
-                    listOf(
-                        colors.primaryContainer.copy(alpha = 0.95f),
-                        colors.secondaryContainer.copy(alpha = 0.75f),
-                    )
-                ),
-                shape = RoundedCornerShape(24.dp),
-            )
-            .padding(18.dp),
+    // 顶部主卡片：玻璃底 + 主题色渐变染色。以前是纯渐变填充（一块不透明色板），
+    // 现在渐变只当"玻璃上的染色"，底下仍然是壁纸在折射，和整站风格统一。
+    GlassPanel(
+        modifier = Modifier
+            .fillMaxWidth(),
+        radius = 26.dp,
     ) {
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .background(
+                    brush = Brush.linearGradient(
+                        listOf(
+                            colors.primaryContainer.copy(alpha = 0.55f),
+                            colors.secondaryContainer.copy(alpha = 0.35f),
+                        )
+                    )
+                )
+                .padding(18.dp),
+        ) {
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Surface(
@@ -573,6 +580,7 @@ private fun HeroCard(apkName: String?, sizeText: String?, running: Boolean) {
                 color = colors.onSurfaceVariant,
             )
         }
+        }
     }
 }
 
@@ -607,7 +615,7 @@ private fun ClassRow(
     onToggleObf: (Boolean) -> Unit,
     onToggleDex: (Boolean) -> Unit,
 ) {
-    Card(shape = RoundedCornerShape(14.dp)) {
+    GlassCard(modifier = Modifier.fillMaxWidth(), radius = 16.dp, contentPadding = PaddingValues(12.dp)) {
         Row(
             Modifier.fillMaxWidth().padding(start = 12.dp, end = 6.dp, top = 8.dp, bottom = 8.dp),
             verticalAlignment = Alignment.CenterVertically,

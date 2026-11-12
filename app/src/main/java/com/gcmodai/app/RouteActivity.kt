@@ -165,6 +165,7 @@ import com.gcmodai.app.ui.pages.stats.StatsPage
 import com.gcmodai.app.ui.pages.translator.TranslatorPage
 import com.gcmodai.app.ui.pages.webview.WebViewPage
 import com.gcmodai.app.ui.theme.GcmodAiTheme
+import com.gcmodai.app.ui.glass.GlassShell
 import com.gcmodai.app.utils.CrashHandler
 import com.gcmodai.app.utils.openUsageAccessSettings
 import okhttp3.OkHttpClient
@@ -258,7 +259,11 @@ class RouteActivity : ComponentActivity() {
                         }
                         .build()
                 }
-                AppRoutes()
+                // 液态玻璃外壳：整屏壁纸 + backdrop 注入。
+                // 放在导航之前，所有页面（含对话框、底部栏）都能拿到同一份玻璃背景。
+                GlassShell {
+                    AppRoutes()
+                }
             }
         }
     }
@@ -375,9 +380,8 @@ class RouteActivity : ComponentActivity() {
         // 这里用占位 + 条件建栈：占位与主题背景同色，最长 3 秒，失败也会落地。
         if (!ipSettled) {
             Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.background)
+                modifier = Modifier.fillMaxSize()
+                // 占位保持透明，直接露出壁纸即可，避免白屏闪一下再变玻璃
             )
             return
         }
@@ -437,7 +441,8 @@ class RouteActivity : ComponentActivity() {
                     modifier = Modifier
                         .fillMaxSize()
                         .semantics { testTagsAsResourceId = true }
-                        .background(MaterialTheme.colorScheme.background)
+                    // 这里不再铺不透明底色：壁纸由外层 GlassHost 画，
+                    // 一旦在这层铺 surface，玻璃就只剩「磨自己」而没有背后的颜色。
                 ) {
                     NavDisplay(
                         backStack = backStack,

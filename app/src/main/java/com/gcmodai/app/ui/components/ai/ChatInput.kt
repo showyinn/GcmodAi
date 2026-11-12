@@ -110,6 +110,7 @@ import com.gcmodai.app.ui.components.ui.permission.rememberPermissionState
 import com.gcmodai.app.ui.context.LocalASRState
 import com.gcmodai.app.ui.context.LocalSettings
 import com.gcmodai.app.ui.context.LocalToaster
+import com.gcmodai.app.ui.glass.GlassPanel
 import com.gcmodai.app.ui.hooks.ChatInputState
 import com.gcmodai.app.utils.SoundEffectPlayer
 import org.koin.compose.koinInject
@@ -205,14 +206,15 @@ fun ChatInput(
         }
     }
 
-    // 底部渐变遮罩：从输入区顶部一直过渡到屏幕底部（键盘弹出时到键盘上沿），避免消息透到系统导航栏
-    val scrimColor = MaterialTheme.colorScheme.background
+    // 底部渐变遮罩：液态玻璃下不再用不透明底色盖住消息（那会把壁纸切掉一块），
+    // 改成极淡的surface 渐隐，只负责让文字在底部有个软着陆。
+    val scrimColor = MaterialTheme.colorScheme.surface
     val imeInsets = WindowInsets.ime
     Surface(
         color = Color.Transparent,
         modifier = Modifier.drawWithCache {
             val brush = Brush.verticalGradient(
-                colors = listOf(scrimColor.copy(alpha = 0f), scrimColor),
+                colors = listOf(Color.Transparent, scrimColor.copy(alpha = 0.22f)),
                 startY = 0f,
                 endY = (size.height - imeInsets.getBottom(this)).coerceAtLeast(1f),
             )
@@ -234,20 +236,11 @@ fun ChatInput(
                 onFinishEdit = onFinishEditQueuedMessage,
                 onResume = onResumeMessageQueue,
             )
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(containerShape)
-                    .chatInputHaze(
-                        hazeState = hazeState,
-                        displaySetting = settings.displaySetting,
-                        containerColor = containerColor,
-                        shape = containerShape,
-                    ),
+            // 输入区：一块液态玻璃胶囊，替代原来的 haze + outline 边框
+            GlassPanel(
+                modifier = Modifier.fillMaxWidth(),
                 shape = containerShape,
-                tonalElevation = 0.dp,
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
-                color = if (settings.displaySetting.enableBlurEffect) Color.Transparent else containerColor,
+                surfaceAlphaScale = 1.25f,
             ) {
                 Column(
                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),

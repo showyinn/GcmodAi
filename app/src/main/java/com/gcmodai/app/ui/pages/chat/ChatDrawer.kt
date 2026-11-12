@@ -5,6 +5,19 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.graphics.Color
+import com.gcmodai.app.ui.glass.LocalGlass
+import com.kyant.backdrop.drawBackdrop
+import com.kyant.backdrop.effects.blur
+import com.kyant.backdrop.effects.lens
+import com.kyant.backdrop.effects.vibrancy
+import com.kyant.backdrop.highlight.Highlight
+import com.kyant.backdrop.shadow.Shadow
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -348,8 +361,32 @@ fun ChatDrawerContent(
         }
     }
 
-    ModalDrawerSheet(
-        modifier = Modifier.width(300.dp)
+    // 抽屉也是一块玻璃：不要 ModalDrawerSheet 自带的不透明底色，
+    // 换成 drawBackdrop，拉出来的时候能直接看到壁纸在玻璃后面折射。
+    val glass = LocalGlass.current
+    val drawerShape = RoundedCornerShape(topEnd = 28.dp, bottomEnd = 28.dp)
+    Box(
+        modifier = Modifier
+            .width(300.dp)
+            .fillMaxHeight()
+            .drawBackdrop(
+                backdrop = glass.backdrop,
+                shape = { drawerShape },
+                effects = {
+                    vibrancy()
+                    blur(glass.spec.blurDp.dp.toPx())
+                    lens(
+                        refractionHeight = glass.spec.refractionHeightDp.dp.toPx(),
+                        refractionAmount = glass.spec.refractionAmountDp.dp.toPx(),
+                        chromaticAberration = true,
+                    )
+                },
+                highlight = { Highlight.Ambient.copy(alpha = glass.spec.highlightAlpha) },
+                shadow = { Shadow(radius = 24.dp, color = Color.Black.copy(alpha = 0.20f)) },
+                onDrawSurface = { drawRect(glass.surfaceTint) },
+            )
+            .clip(drawerShape)
+            .windowInsetsPadding(WindowInsets.systemBars)
     ) {
         Column(
             modifier = Modifier.padding(8.dp),

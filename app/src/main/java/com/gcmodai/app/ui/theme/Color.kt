@@ -174,22 +174,27 @@ fun darkExtendColors(): ExtendColors = ExtendColors(
 object CustomColors {
     var black = false
 
+    /**
+     * 顶栏底色一律透明。
+     *
+     * 液态玻璃是「内容在壁纸上滚动、栏体自己是一块玻璃」的关系：
+     * 顶栏如果还铺一层不透明 surface，壁纸就被切成一条一条，
+     * 玻璃折射的层次全没了。所以这里统一给透明，让壁纸透上来。
+     */
     val topBarColors: TopAppBarColors
-        @Composable get() {
-            return if (!LocalDarkMode.current) TopAppBarDefaults.topAppBarColors(
-                containerColor = colorScheme.surfaceContainer,
-                scrolledContainerColor = colorScheme.surfaceContainer
-            ) else TopAppBarDefaults.topAppBarColors()
-        }
+        @Composable get() = TopAppBarDefaults.topAppBarColors(
+            containerColor = Color.Transparent,
+            scrolledContainerColor = Color.Transparent,
+        )
 
     val cardColors: CardColors
-        @Composable get() = CardDefaults.cardColors(containerColor = colorScheme.surfaceContainer)
+        @Composable get() = CardDefaults.cardColors(containerColor = Color.Transparent)
 
     val cardColorsOnSurfaceContainer: CardColors
-        @Composable get() = CardDefaults.cardColors(containerColor = colorScheme.surfaceBright)
+        @Composable get() = CardDefaults.cardColors(containerColor = Color.Transparent)
 
     val listItemColors: ListItemColors
-        @Composable get() = ListItemDefaults.colors(containerColor = colorScheme.surfaceBright)
+        @Composable get() = ListItemDefaults.colors(containerColor = Color.Transparent)
 
     // 浅色模式下页面背景和悬浮工具栏默认的底色相同，用强调色的版本才分得开
     val floatingToolbarColors: FloatingToolbarColors
