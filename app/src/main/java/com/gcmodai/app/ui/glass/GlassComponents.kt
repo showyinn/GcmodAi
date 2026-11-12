@@ -34,6 +34,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.kyant.backdrop.drawBackdrop
+import com.kyant.backdrop.isRenderEffectSupported
 import com.kyant.backdrop.effects.blur
 import com.kyant.backdrop.effects.lens
 import com.kyant.backdrop.effects.vibrancy
@@ -72,11 +73,15 @@ fun GlassPanel(
     val visuals = LocalGlass.current
     val spec = visuals.spec
     val resolvedShape = shape ?: glassShape(radius)
+    // Android 8~11 不支持 RenderEffect：模糊/折射会被库静默跳过，
+    // 如果还按低透明度染色，字就糊在花壁纸上了。这里把染色加深兜底，保证可读。
+    val fallbackBoost = if (isRenderEffectSupported()) 1f else 3.4f
     val surface = if (tint.isSpecified) {
         tint
     } else {
         visuals.surfaceTint.copy(
-            alpha = (visuals.surfaceTint.alpha * surfaceAlphaScale).coerceIn(0f, 1f)
+            alpha = (visuals.surfaceTint.alpha * surfaceAlphaScale * fallbackBoost)
+                .coerceIn(0f, 0.94f)
         )
     }
 
