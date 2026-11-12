@@ -78,9 +78,11 @@ import me.rerere.hugeicons.stroke.Cancel01
 import me.rerere.hugeicons.stroke.DragDropHorizontal
 import me.rerere.hugeicons.stroke.Favourite
 import me.rerere.hugeicons.stroke.Image03
+import me.rerere.hugeicons.stroke.Music
 import me.rerere.hugeicons.stroke.Search01
 import me.rerere.hugeicons.stroke.Text
 import me.rerere.hugeicons.stroke.Tools
+import me.rerere.hugeicons.stroke.Video01
 import com.gcmodai.app.R
 import com.gcmodai.app.Screen
 import com.gcmodai.app.data.datastore.SettingsStore
@@ -879,6 +881,8 @@ fun ModelModalityTag(model: Model) {
                 imageVector = when (modality) {
                     Modality.TEXT -> HugeIcons.Text
                     Modality.IMAGE -> HugeIcons.Image03
+                    Modality.VIDEO -> HugeIcons.Video01
+                    Modality.AUDIO -> HugeIcons.Music
                 },
                 contentDescription = null,
                 modifier = Modifier
@@ -896,6 +900,8 @@ fun ModelModalityTag(model: Model) {
                 imageVector = when (modality) {
                     Modality.TEXT -> HugeIcons.Text
                     Modality.IMAGE -> HugeIcons.Image03
+                    Modality.VIDEO -> HugeIcons.Video01
+                    Modality.AUDIO -> HugeIcons.Music
                 },
                 contentDescription = null,
                 modifier = Modifier

@@ -42,6 +42,8 @@ import com.gcmodai.app.data.model.Conversation
 import com.gcmodai.app.data.model.MemoryFile
 import com.gcmodai.app.data.model.getAssistantOf
 import com.gcmodai.app.data.model.getChatModelOf
+import com.gcmodai.app.data.ai.transformers.MediaCapabilityTransformer
+import com.gcmodai.app.data.media.MediaProbeClient
 import com.gcmodai.app.data.repository.MemoryRepository
 import com.gcmodai.app.data.repository.WorkspaceRepository
 import com.gcmodai.app.data.repository.memoryId
@@ -77,12 +79,16 @@ class ChatRequestFactory(
     private val memoryRepository: MemoryRepository,
     templateTransformer: TemplateTransformer,
     workspaceRepository: WorkspaceRepository,
+    mediaProbeClient: MediaProbeClient,
 ) {
     private val inputTransformers: List<InputMessageTransformer> = listOf(
         TimeReminderTransformer,
         PromptInjectionTransformer,
         PlaceholderTransformer,
         DocumentAsPromptTransformer,
+        // 放在 OCR 之后、模板之前：视频/音频要在这里决定「原样发」还是「抽帧/摘要降级」，
+        // 太晚就会被 DocumentAsPrompt 之类先吃掉，太早又拿不到最终模型能力。
+        MediaCapabilityTransformer(mediaProbeClient),
         OcrTransformer,
         templateTransformer,
         WorkspaceReminderTransformer(workspaceRepository),

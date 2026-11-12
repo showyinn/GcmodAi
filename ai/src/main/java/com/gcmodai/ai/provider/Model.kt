@@ -47,6 +47,12 @@ enum class ModelType {
 enum class Modality {
     TEXT,
     IMAGE,
+
+    /** 视频输入：走 `video_url` 内容段（Qwen-VL / Gemini 兼容网关等） */
+    VIDEO,
+
+    /** 音频输入：走 `input_audio` 内容段（gpt-4o-audio / qwen-audio / omni 系） */
+    AUDIO,
 }
 
 @Serializable

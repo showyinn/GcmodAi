@@ -951,6 +951,8 @@
   <string name="setting_provider_page_filter_example">e.g.: GPT-3.5</string>
   <string name="setting_provider_page_filter_placeholder">Enter model name to filter</string>
   <string name="setting_provider_page_image">Image</string>
+  <string name="setting_provider_page_video">Video</string>
+  <string name="setting_provider_page_audio">Audio</string>
   <string name="setting_provider_page_image_model">Image</string>
   <string name="setting_provider_page_image_qr_decode_failed">Failed to parse QR code from image: %s</string>
   <string name="setting_provider_page_import_dialog_message">Please select import method:</string>
@@ -1799,5 +1801,6 @@
     <string name="assistant_page_local_tools_pc_desc">让 AI 在你已连接的电脑上执行命令、读写任意文件、安装环境</string>
     <string name="binary_tool_entry">SO Analysis</string>
     <string name="harden_entry">APK Harden</string>
+  <string name="media_tool_entry">Media Tool</string>
     <string name="setting_files_page_folder_harden">Hardened</string>
 </resources>

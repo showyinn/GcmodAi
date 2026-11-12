@@ -125,6 +125,7 @@ import com.gcmodai.app.ui.pages.checkin.CheckinPage
 import com.gcmodai.app.ui.pages.leaderboard.LeaderboardPage
 import com.gcmodai.app.ui.pages.binary.BinaryToolPage
 import com.gcmodai.app.ui.pages.harden.HardenPage
+import com.gcmodai.app.ui.pages.media.MediaToolPage
 import com.gcmodai.app.ui.pages.files.FilesPage
 import com.gcmodai.app.ui.pages.workspace.MyWorkspacePage
 import com.gcmodai.app.ui.pages.workspace.WorkspaceHubPage
@@ -632,6 +633,10 @@ class RouteActivity : ComponentActivity() {
                                 HardenPage()
                             }
 
+                            entry<Screen.MediaTool> {
+                                MediaToolPage()
+                            }
+
                             entry<Screen.Files> {
                                 FilesPage(vm = koinViewModel())
                             }
@@ -896,6 +901,10 @@ sealed interface Screen : NavKey {
     /** 二进制逆向工作台：SO/二进制/DEX/APK 的解密、解析、反汇编与 AI 交接 */
     @Serializable
     data object BinaryTool : Screen
+
+    /** 音视频工具：服务器 ffmpeg 解析 / 抽帧 / 抽音轨（App 内不打包 ffmpeg） */
+    @Serializable
+    data object MediaTool : Screen
 
     /** 代码产物托管（公网可访问，替代原 Web 服务器） */
     @Serializable

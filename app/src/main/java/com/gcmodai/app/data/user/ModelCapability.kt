@@ -84,16 +84,43 @@ object ModelCapability {
     }
 
     /**
+     * 支持视频输入的模型关键词。
+     *
+     * 只认明确吃视频的型号：带 `video` / 明确的多模态视频版本 / Gemini 全系
+     * （Gemini 从 1.5 起就吃原生视频）。VL 系只给 IMAGE，因为 Qwen-VL 的老版本
+     * 传 video_url 会直接 400，误标比不标更难排查。
+     */
+    private val VIDEO_KEYWORDS = listOf(
+        "video", "video-llama", "videollama",
+        "gemini-1.5", "gemini-2", "gemini-3", "gemini-exp",
+        "qwen2.5-vl", "qwen3-vl", "qwen-vl-max", "qwen-vl-plus",
+        "glm-4.5v", "glm-4v-plus", "step-1o", "step-1v",
+        "internvl3", "minicpm-v-4", "kimi-vl", "molmo",
+        "llava-video", "llava-ov", "mplug-owl3", "cogvlm2-video",
+    )
+
+    /** 支持音频输入的模型关键词（OpenAI `input_audio` 那套）。 */
+    private val AUDIO_KEYWORDS = listOf(
+        "audio", "omni", "realtime", "voice",
+        "whisper", "paraformer", "sensevoice", "asr",
+        "qwen2-audio", "qwen-audio", "qwen2.5-omni", "qwen3-omni",
+        "glm-4-voice", "glm-realtime", "step-audio", "mimo-audio",
+        "gpt-4o-audio", "gpt-4o-mini-audio",
+    )
+
+    /**
      * 推断输入模态。
      *
-     * 命中视觉关键词才加 IMAGE；其余一律只有 TEXT。
+     * 顺序固定为 文字 → 图片 → 视频 → 音频，和 `ModelRegistry.sortModalities` 一致，
+     * 免得 UI 上的能力角标顺序跳来跳去。
      */
     fun inferInputModalities(modelId: String): List<Modality> {
         val id = modelId.lowercase()
-        return if (VISION_KEYWORDS.any { it in id }) {
-            listOf(Modality.TEXT, Modality.IMAGE)
-        } else {
-            listOf(Modality.TEXT)
+        return buildList {
+            add(Modality.TEXT)
+            if (VISION_KEYWORDS.any { it in id }) add(Modality.IMAGE)
+            if (VIDEO_KEYWORDS.any { it in id }) add(Modality.VIDEO)
+            if (AUDIO_KEYWORDS.any { it in id }) add(Modality.AUDIO)
         }
     }
 

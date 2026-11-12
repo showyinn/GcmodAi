@@ -466,7 +466,7 @@ class ChatCompletionsAPI(
                     supportInputModalities = supportInputModalities,
                 )
             } else {
-                addNonAssistantMessage(message)
+                addNonAssistantMessage(message, supportInputModalities)
             }
         }
     }
@@ -624,7 +624,17 @@ class ChatCompletionsAPI(
         }
     }
 
-    private fun JsonArrayBuilder.addNonAssistantMessage(message: UIMessage) {
+    private fun JsonArrayBuilder.addNonAssistantMessage(
+        message: UIMessage,
+        supportInputModalities: List<Modality> = listOf(Modality.TEXT, Modality.IMAGE),
+    ) {
+        // 模型不支持某模态时不能硬塞内容段：OpenAI 兼容网关遇到不认识的 type 会直接 400，
+        // 整条请求就废了。所以这里统一降级成一句文字占位，既保留“用户发过东西”的语义，
+        // 又保证请求能过。
+        val supportsImage = Modality.IMAGE in supportInputModalities
+        val supportsVideo = Modality.VIDEO in supportInputModalities
+        val supportsAudio = Modality.AUDIO in supportInputModalities
+
         add(buildJsonObject {
             put("role", JsonPrimitive(message.role.name.lowercase()))
 
@@ -642,17 +652,64 @@ class ChatCompletionsAPI(
                             }
 
                             is UIMessagePart.Image -> {
-                                add(buildJsonObject {
-                                    part.encodeBase64().onSuccess { encodedImage ->
-                                        put("type", "image_url")
-                                        put("image_url", buildJsonObject {
-                                            put("url", encodedImage.base64)
-                                        })
-                                    }.onFailure {
-                                        it.printStackTrace()
+                                if (!supportsImage) {
+                                    add(buildJsonObject {
                                         put("type", "text")
-                                        put("text", "")
+                                        put("text", "[图片已省略：当前模型不支持图片输入]")
+                                    })
+                                } else {
+                                    add(buildJsonObject {
+                                        part.encodeBase64().onSuccess { encodedImage ->
+                                            put("type", "image_url")
+                                            put("image_url", buildJsonObject {
+                                                put("url", encodedImage.base64)
+                                            })
+                                        }.onFailure {
+                                            it.printStackTrace()
+                                            put("type", "text")
+                                            put("text", "")
+                                        }
+                                    })
+                                }
+                            }
+
+                            is UIMessagePart.Video -> {
+                                val encoded = if (supportsVideo) part.encodeBase64().getOrNull() else null
+                                add(buildJsonObject {
+                                    if (encoded == null) {
+                                        put("type", "text")
+                                        put("text", "[视频已省略：当前模型不支持视频输入]")
+                                    } else {
+                                        put("type", "video_url")
+                                        put("video_url", buildJsonObject {
+                                            put("url", encoded)
+                                        })
                                     }
+                                })
+                            }
+
+                            is UIMessagePart.Audio -> {
+                                val encoded = if (supportsAudio) part.encodeBase64(false).getOrNull() else null
+                                add(buildJsonObject {
+                                    if (encoded == null) {
+                                        put("type", "text")
+                                        put("text", "[音频已省略：当前模型不支持音频输入]")
+                                    } else {
+                                        put("type", "input_audio")
+                                        put("input_audio", buildJsonObject {
+                                            put("data", encoded)
+                                            put("format", audioFormatOf(part.url))
+                                        })
+                                    }
+                                })
+                            }
+
+                            is UIMessagePart.Document -> {
+                                // 文档没法作为内容段上传，但至少要让模型知道有这么个附件，
+                                // 否则用户传了 apk/zip 之后模型完全不知道发生了什么。
+                                add(buildJsonObject {
+                                    put("type", "text")
+                                    put("text", "[附件] ${part.fileName} (${part.mime})")
                                 })
                             }
 
@@ -662,6 +719,15 @@ class ChatCompletionsAPI(
                 }
             }
         })
+    }
+
+    /** OpenAI 的 input_audio.format 只认 wav/mp3，其它容器按 mp3 兜底。 */
+    private fun audioFormatOf(url: String): String {
+        val ext = url.substringBefore('?').substringAfterLast('.', "").lowercase()
+        return when (ext) {
+            "wav", "wave" -> "wav"
+            else -> "mp3"
+        }
     }
 
     private fun UIMessagePart.Tool.toToolResultContent(supportInputModalities: List<Modality>): JsonElement {
@@ -815,8 +881,11 @@ class ChatCompletionsAPI(
     }
 
     private fun List<UIMessagePart>.isOnlyTextPart(): Boolean {
-        val gonnaSend = filter { it is UIMessagePart.Text || it is UIMessagePart.Image }.size
         val texts = filter { it is UIMessagePart.Text }.size
-        return gonnaSend == texts && texts == 1
+        // 以前这里只数 Text|Image，于是「一段文字 + 一个视频」会被判定成纯文本，
+        // 走 content 字符串快捷路径，视频/音频/文档在组装请求时被静默丢掉。
+        // 现在只要还有任何非文字内容段（reasoning 除外）就必须走数组路径。
+        val others = filter { it !is UIMessagePart.Text && it !is UIMessagePart.Reasoning }.size
+        return texts == 1 && others == 0
     }
 }

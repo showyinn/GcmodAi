@@ -28,6 +28,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.toShape
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -48,6 +49,7 @@ import me.rerere.hugeicons.stroke.UserCircle
 import me.rerere.hugeicons.stroke.AiMagic
 import me.rerere.hugeicons.stroke.Alert01
 import me.rerere.hugeicons.stroke.Book01
+import me.rerere.hugeicons.stroke.BatteryCharging02
 import me.rerere.hugeicons.stroke.Book03
 import me.rerere.hugeicons.stroke.Bookshelf01
 import me.rerere.hugeicons.stroke.Brain02
@@ -60,6 +62,7 @@ import me.rerere.hugeicons.stroke.LookTop
 import me.rerere.hugeicons.stroke.McpServer
 import me.rerere.hugeicons.stroke.Megaphone01
 import me.rerere.hugeicons.stroke.Moon02
+import me.rerere.hugeicons.stroke.Refresh
 import me.rerere.hugeicons.stroke.Package
 import me.rerere.hugeicons.stroke.ServerStack01
 import me.rerere.hugeicons.stroke.Settings03
@@ -84,6 +87,7 @@ import com.gcmodai.app.ui.context.LocalNavController
 import com.gcmodai.app.ui.hooks.rememberColorMode
 import com.gcmodai.app.ui.theme.ColorMode
 import com.gcmodai.app.ui.theme.CustomColors
+import com.gcmodai.app.utils.BackgroundKeepAlive
 import com.gcmodai.app.utils.openUrl
 import com.gcmodai.app.utils.plus
 import org.koin.androidx.compose.koinViewModel
@@ -284,6 +288,50 @@ fun SettingPage(vm: SettingVM = koinViewModel()) {
                         leadingContent = { CardGroupIcon(HugeIcons.McpServer, containerColor = containerColor, contentColor = contentColor) },
                         supportingContent = { Text(stringResource(R.string.setting_page_mcp_desc)) },
                         headlineContent = { Text(stringResource(R.string.setting_page_mcp)) },
+                    )
+                }
+            }
+
+            item("backgroundRunning") {
+                val context = LocalContext.current
+                val containerColor = MaterialTheme.colorScheme.tertiaryContainer
+                val contentColor = MaterialTheme.colorScheme.onTertiaryContainer
+                // 每次进入设置页重新读一次白名单状态：用户可能刚从系统页面回来
+                val ignoringBattery = remember { mutableStateOf(BackgroundKeepAlive.isIgnoringBatteryOptimizations(context)) }
+                LaunchedEffect(Unit) {
+                    ignoringBattery.value = BackgroundKeepAlive.isIgnoringBatteryOptimizations(context)
+                }
+                val vendor = BackgroundKeepAlive.vendorAutoStartHint()
+                CardGroup(
+                    title = { Text("后台运行") },
+                ) {
+                    item(
+                        onClick = { BackgroundKeepAlive.requestIgnoreBatteryOptimizations(context) },
+                        leadingContent = { CardGroupIcon(HugeIcons.BatteryCharging02, containerColor = containerColor, contentColor = contentColor) },
+                        supportingContent = {
+                            Text(
+                                if (ignoringBattery.value) {
+                                    "已加入白名单：锁屏后生成、工作区、内嵌网页都会继续跑"
+                                } else {
+                                    "未加入白名单：点这里把 GcmodAi 设为「不受电池优化限制」"
+                                }
+                            )
+                        },
+                        headlineContent = { Text("电池优化白名单") },
+                    )
+                    item(
+                        onClick = { BackgroundKeepAlive.openAutoStartSettings(context) },
+                        leadingContent = { CardGroupIcon(HugeIcons.Refresh, containerColor = containerColor, contentColor = contentColor) },
+                        supportingContent = {
+                            Text(
+                                if (vendor != null) {
+                                    "检测到 $vendor：把「自启动」「后台运行」都打开，锁屏后才不会被清掉"
+                                } else {
+                                    "打开系统的自启动 / 后台管理页面"
+                                }
+                            )
+                        },
+                        headlineContent = { Text("自启动与后台管理") },
                     )
                 }
             }

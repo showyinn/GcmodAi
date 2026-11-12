@@ -1,5 +1,12 @@
 package com.gcmodai.app.ui.pages.setting
 
+import androidx.core.content.FileProvider
+import android.provider.MediaStore
+import android.os.Environment
+import android.os.Build
+import android.content.ContentValues
+import android.content.Context
+import android.content.Intent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -59,6 +66,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -68,10 +76,15 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import me.rerere.hugeicons.HugeIcons
 import me.rerere.hugeicons.stroke.Clean
 import me.rerere.hugeicons.stroke.Delete01
+import me.rerere.hugeicons.stroke.ArrowUpRight01
+import me.rerere.hugeicons.stroke.Share05
+import me.rerere.hugeicons.stroke.Download04
 import me.rerere.hugeicons.stroke.File01
 import me.rerere.hugeicons.stroke.FileAudio
 import me.rerere.hugeicons.stroke.FileVideo
@@ -99,6 +112,7 @@ fun SettingFilesPage(
     val gridState = rememberLazyStaggeredGridState()
     val scope = rememberCoroutineScope()
     val toaster = LocalToaster.current
+    val context = LocalContext.current
     val folders = remember { listOf(FileFolders.UPLOAD, FileFolders.HARDEN) }
 
     // 预先获取字符串资源
@@ -234,6 +248,39 @@ fun SettingFilesPage(
                         FileItem(
                             file = file,
                             fileOnDisk = filesManager.getFile(file),
+                            onDownload = {
+                                scope.launch {
+                                    val source = filesManager.getFile(file)
+                                    val ok = withContext(Dispatchers.IO) {
+                                        exportToDownloads(
+                                            context = context,
+                                            source = source,
+                                            displayName = exportFileName(file),
+                                        )
+                                    }
+                                    toaster.show(
+                                        if (ok) {
+                                            "已保存到 下载/GcmodAi 目录"
+                                        } else {
+                                            "保存失败，请检查存储空间"
+                                        }
+                                    )
+                                }
+                            },
+                            onOpenWith = {
+                                openWithOtherApp(
+                                    context = context,
+                                    file = filesManager.getFile(file),
+                                    mime = mimeOf(file),
+                                )
+                            },
+                            onShare = {
+                                shareFile(
+                                    context = context,
+                                    file = filesManager.getFile(file),
+                                    mime = mimeOf(file),
+                                )
+                            },
                             onDelete = { pendingDelete = file }
                         )
                     }
@@ -371,6 +418,9 @@ private fun FileItem(
     file: ManagedFileEntity,
     fileOnDisk: File,
     onDelete: () -> Unit,
+    onDownload: () -> Unit = {},
+    onOpenWith: () -> Unit = {},
+    onShare: () -> Unit = {},
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -419,17 +469,36 @@ private fun FileItem(
                 }
 
                 // 带底色的按钮，叠在图片上也看得清
-                FilledTonalIconButton(
-                    onClick = onDelete,
+                // 操作区：分享 / 下载到手机 / 删除（加固包与普通附件一致）
+                Row(
                     modifier = Modifier
                         .align(Alignment.TopEnd)
-                        .padding(4.dp)
+                        .padding(4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
-                    Icon(
-                        imageVector = HugeIcons.Delete01,
-                        contentDescription = stringResource(R.string.setting_files_page_delete_content_description),
-                        modifier = Modifier.size(20.dp),
-                    )
+                    FilledTonalIconButton(onClick = onShare) {
+                        Icon(
+                            imageVector = HugeIcons.Share05,
+                            contentDescription = "分享",
+                            modifier = Modifier.size(18.dp),
+                        )
+                    }
+                    FilledTonalIconButton(onClick = onDownload) {
+                        Icon(
+                            imageVector = HugeIcons.Download04,
+                            contentDescription = "下载到手机",
+                            modifier = Modifier.size(18.dp),
+                        )
+                    }
+                    FilledTonalIconButton(
+                        onClick = onDelete,
+                    ) {
+                        Icon(
+                            imageVector = HugeIcons.Delete01,
+                            contentDescription = stringResource(R.string.setting_files_page_delete_content_description),
+                            modifier = Modifier.size(18.dp),
+                        )
+                    }
                 }
             }
 
@@ -452,5 +521,100 @@ private fun FileItem(
                 )
             }
         }
+    }
+}
+
+
+/**
+ * 导出时用的文件名：确保一定带扩展名。
+ *
+ * 数据库里存的 displayName 有可能是用户随手写的「加固包」这种无后缀名字，
+ * 直接写进 Download 会让系统不知道该怎么打开，所以这里按磁盘真实文件名补后缀。
+ */
+private fun exportFileName(file: ManagedFileEntity): String {
+    val name = file.displayName.ifBlank { "gcmodai_file" }
+    if (name.substringAfterLast('/', name).contains('.')) return name
+    val diskName = file.relativePath.substringAfterLast('/')
+    val ext = diskName.substringAfterLast('.', "")
+    return if (ext.isBlank()) name else "$name.$ext"
+}
+
+/** 猜 MIME：apk 一定要给对，否则「用其他应用打开」会没有安装器可选。 */
+private fun mimeOf(file: ManagedFileEntity): String {
+    val explicit = file.mimeType
+    if (explicit.isNotBlank() && explicit != "application/octet-stream") return explicit
+    return when (exportFileName(file).substringAfterLast('.', "").lowercase()) {
+        "apk" -> "application/vnd.android.package-archive"
+        "zip" -> "application/zip"
+        "7z" -> "application/x-7z-compressed"
+        "so" -> "application/octet-stream"
+        "jpg", "jpeg" -> "image/jpeg"
+        "png" -> "image/png"
+        "mp4" -> "video/mp4"
+        "mp3" -> "audio/mpeg"
+        "txt", "md" -> "text/plain"
+        else -> "application/octet-stream"
+    }
+}
+
+// ---------------------------------------------------------------------------
+// 加固包 / 附件的导出、分享、用其他应用打开
+// ---------------------------------------------------------------------------
+
+/**
+ * 把应用私有目录里的文件复制到手机「Download/GcmodAi」。
+ *
+ * Android 10+ 走 MediaStore（无需存储权限）；更低版本直接写公共目录。
+ * 加固包通常要再发给别人安装，所以必须能离开应用沙盒。
+ */
+private fun exportToDownloads(context: Context, source: File, displayName: String): Boolean {
+    if (!source.exists()) return false
+    return runCatching {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val values = ContentValues().apply {
+                put(MediaStore.Downloads.DISPLAY_NAME, displayName)
+                put(MediaStore.Downloads.MIME_TYPE, "application/vnd.android.package-archive")
+                put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/GcmodAi")
+            }
+            val uri = context.contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
+                ?: return false
+            context.contentResolver.openOutputStream(uri)?.use { out ->
+                source.inputStream().use { it.copyTo(out) }
+            }
+            true
+        } else {
+            val dir = File(
+                Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
+                "GcmodAi",
+            )
+            dir.mkdirs()
+            source.copyTo(File(dir, displayName), overwrite = true)
+            true
+        }
+    }.getOrDefault(false)
+}
+
+/** 用 FileProvider 生成可授权 URI，交给系统「分享」面板。 */
+private fun shareFile(context: Context, file: File, mime: String) {
+    runCatching {
+        val uri = FileProvider.getUriForFile(context, context.packageName + ".fileprovider", file)
+        val intent = Intent(Intent.ACTION_SEND).apply {
+            type = mime.ifBlank { "application/octet-stream" }
+            putExtra(Intent.EXTRA_STREAM, uri)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        context.startActivity(Intent.createChooser(intent, "分享"))
+    }
+}
+
+/** 交给其他应用打开（安装器、解压、播放器等）。 */
+private fun openWithOtherApp(context: Context, file: File, mime: String) {
+    runCatching {
+        val uri = FileProvider.getUriForFile(context, context.packageName + ".fileprovider", file)
+        val intent = Intent(Intent.ACTION_VIEW).apply {
+            setDataAndType(uri, mime.ifBlank { "application/octet-stream" })
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        context.startActivity(Intent.createChooser(intent, "打开"))
     }
 }

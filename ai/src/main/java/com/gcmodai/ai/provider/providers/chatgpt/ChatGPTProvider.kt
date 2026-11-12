@@ -152,6 +152,8 @@ internal fun parseCodexModels(body: String): List<Model> {
                 when (modality.jsonPrimitiveOrNull?.contentOrNull) {
                     "text" -> Modality.TEXT
                     "image" -> Modality.IMAGE
+                    "video" -> Modality.VIDEO
+                    "audio" -> Modality.AUDIO
                     else -> null
                 }
             }

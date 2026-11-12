@@ -16,6 +16,7 @@ import com.gcmodai.app.AppScope
 import com.gcmodai.app.CHAT_LIVE_UPDATE_NOTIFICATION_CHANNEL_ID
 import com.gcmodai.app.R
 import com.gcmodai.app.conversationIntent
+import com.gcmodai.app.utils.GenerationWakeLock
 import org.koin.android.ext.android.inject
 import kotlin.uuid.Uuid
 
@@ -65,6 +66,10 @@ class ChatGenerationForegroundService : Service() {
 
     private val activeGenerations = linkedMapOf<String, String>()
     private var isForeground = false
+
+    // 前台服务只保证进程有前台优先级，CPU 还是可能被 Doze 挂起；
+    // 生成期间额外持一把 PARTIAL_WAKE_LOCK，锁屏之后流式输出才不会断在半句。
+    private val wakeLock by lazy { GenerationWakeLock(this) }
     private val appScope: AppScope by inject()
     private val chatService: ChatService by inject()
 
@@ -81,6 +86,7 @@ class ChatGenerationForegroundService : Service() {
 
     override fun onDestroy() {
         activeGenerations.clear()
+        wakeLock.release()
         if (isForeground) {
             stopForeground(STOP_FOREGROUND_REMOVE)
             isForeground = false
@@ -106,6 +112,7 @@ class ChatGenerationForegroundService : Service() {
         val generationId = intent.getStringExtra(EXTRA_GENERATION_ID) ?: return stopSelf(startId)
         val conversationId = intent.getStringExtra(EXTRA_CONVERSATION_ID) ?: return stopSelf(startId)
         activeGenerations[generationId] = conversationId
+        wakeLock.acquire()
         updateForegroundNotification(conversationId)
     }
 
@@ -143,6 +150,7 @@ class ChatGenerationForegroundService : Service() {
     }
 
     private fun stopService() {
+        wakeLock.release()
         if (isForeground) {
             stopForeground(STOP_FOREGROUND_REMOVE)
             isForeground = false

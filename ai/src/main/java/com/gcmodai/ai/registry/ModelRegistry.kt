@@ -798,12 +798,23 @@ object ModelRegistry {
         return if (modalities.isEmpty()) {
             listOf(Modality.TEXT)
         } else {
-            listOf(Modality.TEXT, Modality.IMAGE).filter { it in modalities }
+            // 固定顺序：文字 → 图片 → 视频 → 音频。UI 直接按这个顺序画能力角标，
+            // 不排序的话 Set 转 List 的顺序会随着 provider 返回顺序漂移。
+            listOf(Modality.TEXT, Modality.IMAGE, Modality.VIDEO, Modality.AUDIO)
+                .filter { it in modalities }
         }
     }
 
     private fun ModelDefinitionBuilder.visionInput() {
         input(Modality.TEXT, Modality.IMAGE)
+    }
+
+    private fun ModelDefinitionBuilder.videoInput() {
+        input(Modality.TEXT, Modality.IMAGE, Modality.VIDEO)
+    }
+
+    private fun ModelDefinitionBuilder.audioInput() {
+        input(Modality.TEXT, Modality.AUDIO)
     }
 
     private fun ModelDefinitionBuilder.imageOutput() {

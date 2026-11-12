@@ -920,6 +920,8 @@ mDNS 地址：使用 .local 主机名，同一网络中的其他设备可通过�
   <string name="setting_provider_page_filter_example">例如：GPT-3.5</string>
   <string name="setting_provider_page_filter_placeholder">输入模型名称筛选</string>
   <string name="setting_provider_page_image">图片</string>
+  <string name="setting_provider_page_video">视频</string>
+  <string name="setting_provider_page_audio">音频</string>
   <string name="setting_provider_page_image_model">图像</string>
   <string name="setting_provider_page_image_qr_decode_failed">解析图片中的二维码失败：%s</string>
   <string name="setting_provider_page_import_dialog_message">请选择导入方式：</string>
@@ -1801,5 +1803,6 @@ mDNS 地址：使用 .local 主机名，同一网络中的其他设备可通过�
     <string name="assistant_page_local_tools_pc_desc">Let AI run commands, read and write files, and set up software on your connected computer</string>
     <string name="binary_tool_entry">SO 分析</string>
     <string name="harden_entry">APK 加固</string>
+  <string name="media_tool_entry">音视频工具</string>
     <string name="setting_files_page_folder_harden">加固包</string>
 </resources>

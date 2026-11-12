@@ -32,6 +32,7 @@ import com.gcmodai.app.data.db.fts.MessageFtsManager
 import com.gcmodai.app.data.remote.ModelsDevUpdater
 import com.gcmodai.app.data.remote.RemoteFileStore
 import com.gcmodai.app.data.harden.HardenClient
+import com.gcmodai.app.data.media.MediaProbeClient
 import com.gcmodai.app.data.remote.GatewayFailoverInterceptor
 import com.gcmodai.app.data.remote.GcmodAiAPI
 import com.gcmodai.app.data.remote.LeaderboardRepository
@@ -314,6 +315,9 @@ val dataSourceModule = module {
 
     // APK 加固：上传到 gcmod.bond 的加固服务，服务器跑 apktool/apksigner
     single { HardenClient(client = get(), userRepository = get()) }
+
+    // 音视频解析：同一个服务里的 ffmpeg 端点（probe / 抽帧 / 抽音轨），App 不背 ffmpeg 体积
+    single { MediaProbeClient(client = get(), userRepository = get()) }
 
     // 排行榜：https://gcmod.online/api/leaderboard（富豪榜 / 词元榜，各前 10 名）
     single {
