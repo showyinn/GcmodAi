@@ -165,7 +165,6 @@ import com.gcmodai.app.ui.pages.stats.StatsPage
 import com.gcmodai.app.ui.pages.translator.TranslatorPage
 import com.gcmodai.app.ui.pages.webview.WebViewPage
 import com.gcmodai.app.ui.theme.GcmodAiTheme
-import com.gcmodai.app.ui.glass.GlassShell
 import com.gcmodai.app.utils.CrashHandler
 import com.gcmodai.app.utils.openUsageAccessSettings
 import okhttp3.OkHttpClient
@@ -259,11 +258,8 @@ class RouteActivity : ComponentActivity() {
                         }
                         .build()
                 }
-                // 液态玻璃外壳：整屏壁纸 + backdrop 注入。
-                // 放在导航之前，所有页面（含对话框、底部栏）都能拿到同一份玻璃背景。
-                GlassShell {
-                    AppRoutes()
-                }
+                // MD3 Expressive 外壳：不再做整屏玻璃反射，性能优先（滚动/输入都更跟手）
+                AppRoutes()
             }
         }
     }
@@ -441,8 +437,7 @@ class RouteActivity : ComponentActivity() {
                     modifier = Modifier
                         .fillMaxSize()
                         .semantics { testTagsAsResourceId = true }
-                    // 这里不再铺不透明底色：壁纸由外层 GlassHost 画，
-                    // 一旦在这层铺 surface，玻璃就只剩「磨自己」而没有背后的颜色。
+                        .background(MaterialTheme.colorScheme.background)
                 ) {
                     NavDisplay(
                         backStack = backStack,

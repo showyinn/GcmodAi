@@ -175,23 +175,22 @@ object CustomColors {
     var black = false
 
     /**
-     * 顶栏底色一律透明。
+     * 顶栏配色：MD3 规范 —— 静止用 surface，滚动后过渡到 surfaceContainer。
      *
-     * 液态玻璃是「内容在壁纸上滚动、栏体自己是一块玻璃」的关系：
-     * 顶栏如果还铺一层不透明 surface，壁纸就被切成一条一条，
-     * 玻璃折射的层次全没了。所以这里统一给透明，让壁纸透上来。
+     * 这样内容滚动时顶栏会有轻微的色调变化（Expressive 的"抬升"感），
+     * 又不需要额外的模糊/阴影层，滚动性能最好。
      */
     val topBarColors: TopAppBarColors
         @Composable get() = TopAppBarDefaults.topAppBarColors(
-            containerColor = Color.Transparent,
-            scrolledContainerColor = Color.Transparent,
+            containerColor = colorScheme.surface,
+            scrolledContainerColor = colorScheme.surfaceContainer,
         )
 
     val cardColors: CardColors
-        @Composable get() = CardDefaults.cardColors(containerColor = Color.Transparent)
+        @Composable get() = CardDefaults.cardColors(containerColor = colorScheme.surfaceContainerLow)
 
     val cardColorsOnSurfaceContainer: CardColors
-        @Composable get() = CardDefaults.cardColors(containerColor = Color.Transparent)
+        @Composable get() = CardDefaults.cardColors(containerColor = colorScheme.surfaceContainerHigh)
 
     val listItemColors: ListItemColors
         @Composable get() = ListItemDefaults.colors(containerColor = Color.Transparent)

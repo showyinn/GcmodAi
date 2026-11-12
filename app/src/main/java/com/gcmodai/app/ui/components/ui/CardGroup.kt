@@ -2,6 +2,7 @@ package com.gcmodai.app.ui.components.ui
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -46,7 +47,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.fastForEachIndexed
-import com.gcmodai.app.ui.glass.GlassCard
+import com.gcmodai.app.ui.design.LocalUiStyle
 import com.gcmodai.app.ui.theme.CustomColors
 
 private val CardGroupCorner = 20.dp
@@ -298,13 +299,11 @@ private fun CardGroupListItem(
 }
 
 /**
- * 设置页的分组卡片 —— 液态玻璃版。
+ * 设置页的分组卡片 —— MD3 Expressive 版本。
  *
- * 结构变了：以前每行是一个独立 Surface（圆角随按下动画变化），
- * 现在整组是一块玻璃，行只是玻璃上的文本行。这样玻璃的折射是整块的，
- * 不会因为行与行之间的缝隙断成一截一截。
- *
- * 调用方式完全没变（`CardGroup { item(...) }`），所以所有设置页自动升级。
+ * 结构：标题（primary 色、titleSmall）+ 一张 tonal 容器卡，行是卡内的 ListItem。
+ * 整组一个容器，行之间不放分割线（靠 [LocalUiStyle] 的密度控制间距），
+ * 视觉更干净，滚动也更快：一张卡只有一个 Surface 需要合成。
  */
 @Composable
 fun CardGroup(
@@ -314,29 +313,41 @@ fun CardGroup(
 ) {
     val scope = CardGroupScopeImpl()
     scope.content()
+    val ui = LocalUiStyle.current
 
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
         if (title != null) {
             CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.primary) {
                 ProvideTextStyle(MaterialTheme.typography.titleSmallEmphasized) {
-                    Box(modifier = Modifier.padding(start = 8.dp, top = 8.dp, bottom = 2.dp)) {
+                    Box(modifier = Modifier.padding(start = 6.dp, top = 8.dp)) {
                         title()
                     }
                 }
             }
         }
-        GlassCard(
+        Surface(
             modifier = Modifier.fillMaxWidth(),
-            contentPadding = PaddingValues(vertical = 4.dp),
-            verticalArrangement = Arrangement.spacedBy(0.dp),
+            shape = RoundedCornerShape(ui.cardCorner),
+            color = MaterialTheme.colorScheme.surfaceContainerLow,
+            border = BorderStroke(
+                1.dp,
+                MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.40f),
+            ),
         ) {
-            val count = scope.items.size
-            scope.items.fastForEachIndexed { index, item ->
-                val formContent = item.formContent
-                if (formContent != null) {
-                    CardGroupFormItem(item = item, formContent = formContent, count = count, index = index)
-                } else {
-                    CardGroupListItem(item = item, count = count, index = index)
+            Column(Modifier.padding(vertical = 4.dp)) {
+                val count = scope.items.size
+                scope.items.fastForEachIndexed { index, item ->
+                    val formContent = item.formContent
+                    if (formContent != null) {
+                        CardGroupFormItem(
+                            item = item,
+                            formContent = formContent,
+                            count = count,
+                            index = index,
+                        )
+                    } else {
+                        CardGroupListItem(item = item, count = count, index = index)
+                    }
                 }
             }
         }

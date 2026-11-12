@@ -83,6 +83,10 @@ internal val SETTINGS_FIELDS: List<SettingsField<*, *>> = with(SettingsStore) {
         plain(GLASS_LEVEL, Settings::glassLevel) { copy(glassLevel = it) },
         plain(GLASS_WALLPAPER, Settings::glassWallpaper) { copy(glassWallpaper = it) },
         plain(GLASS_ANIMATED, Settings::glassAnimated) { copy(glassAnimated = it) },
+        // DIY 界面风格
+        plain(CORNER_SCALE, Settings::cornerScale) { copy(cornerScale = it) },
+        plain(BUTTON_SIZE, Settings::buttonSize) { copy(buttonSize = it) },
+        plain(LIST_DENSITY, Settings::listDensity) { copy(listDensity = it) },
         json(DISPLAY_SETTING, Settings::displaySetting) { copy(displaySetting = it) },
         json(NETWORK_SETTING, Settings::networkSetting) { copy(networkSetting = it) },
         plain(DEVELOPER_MODE, Settings::developerMode) { copy(developerMode = it) },

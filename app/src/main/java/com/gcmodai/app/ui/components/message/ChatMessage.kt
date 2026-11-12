@@ -40,9 +40,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.addOutline
@@ -56,14 +58,6 @@ import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withLink
 import androidx.compose.ui.unit.dp
-import com.gcmodai.app.ui.glass.LocalGlass
-import com.kyant.backdrop.drawBackdrop
-import com.kyant.backdrop.effects.blur
-import com.kyant.backdrop.effects.lens
-import com.kyant.backdrop.effects.vibrancy
-import com.kyant.backdrop.highlight.Highlight
-import com.kyant.backdrop.shadow.InnerShadow
-import com.kyant.backdrop.shadow.Shadow
 import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.util.fastAll
 import androidx.compose.ui.util.fastForEach
@@ -557,11 +551,10 @@ private val BubbleTailCorner = 6.dp
 private val BubblePressedCorner = 12.dp
 
 /**
- * 消息气泡：液态玻璃。
+ * 消息气泡：MD3 tonal 气泡。
  *
- * 为什么不用原来的纯色背景：
- * 壁纸是流动的，纯色气泡会把壁纸切成一块块"补丁"，玻璃才是这套外观的主角。
- * 用户气泡保留主题色染色（一眼分清谁说的话），助手气泡用中性玻璃 + 更淡的染色。
+ * 视觉：用户消息用 primaryContainer（一眼分清谁说的），助手消息用 surfaceContainerHigh；
+ * 靠"色调差 + 1dp 描边"分层，不用强阴影，滚动更省合成。
  */
 @Composable
 private fun ChatMessageBubble(
@@ -580,28 +573,10 @@ private fun ChatMessageBubble(
         RoundedCornerShape(topStart = BubbleTailCorner, topEnd = corner, bottomEnd = corner, bottomStart = corner)
     }
     val contentColor = contentColorFor(color)
-    val visuals = LocalGlass.current
-
     Box(
         modifier = modifier
-            .drawBackdrop(
-                backdrop = visuals.backdrop,
-                shape = { shape },
-                effects = {
-                    vibrancy()
-                    blur(visuals.spec.blurDp.dp.toPx() * 0.9f)
-                    lens(
-                        refractionHeight = visuals.spec.refractionHeightDp.dp.toPx() * 0.7f,
-                        refractionAmount = visuals.spec.refractionAmountDp.dp.toPx() * 0.7f,
-                        chromaticAberration = true,
-                    )
-                },
-                highlight = { Highlight.Ambient.copy(alpha = visuals.spec.highlightAlpha * 0.8f) },
-                shadow = { Shadow(radius = 10.dp, color = Color.Black.copy(alpha = 0.10f)) },
-                innerShadow = { InnerShadow(radius = 6.dp, alpha = visuals.spec.innerShadowAlpha) },
-                onDrawSurface = { drawRect(color) },
-            )
             .clipDrawing(shape)
+            .background(color)
             .then(
                 if (onClick != null) {
                     Modifier.clickable(interactionSource = interactionSource, indication = ripple(), onClick = onClick)

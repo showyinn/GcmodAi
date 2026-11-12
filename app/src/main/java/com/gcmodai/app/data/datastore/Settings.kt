@@ -39,6 +39,12 @@ data class Settings(
     val glassWallpaper: Int = 0,
     /** 壁纸是否缓慢流动（关掉更省电） */
     val glassAnimated: Boolean = true,
+    /** DIY：圆角倍率 0.5~1.8，整站 Shapes 跟着变 */
+    val cornerScale: Float = 1f,
+    /** DIY：按钮尺寸 0=紧凑 1=标准 2=宽松 */
+    val buttonSize: Int = 1,
+    /** DIY：列表密度 0=紧凑 1=标准 2=舒适 */
+    val listDensity: Int = 1,
     val developerMode: Boolean = false,
     val displaySetting: DisplaySetting = DisplaySetting(),
     val networkSetting: NetworkSetting = NetworkSetting(),

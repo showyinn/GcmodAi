@@ -114,6 +114,10 @@ class SettingsStore internal constructor(
         val GLASS_LEVEL = intPreferencesKey("glass_level")
         val GLASS_WALLPAPER = intPreferencesKey("glass_wallpaper")
         val GLASS_ANIMATED = booleanPreferencesKey("glass_animated")
+        // DIY 界面风格（圆角 / 按钮尺寸 / 列表密度）
+        val CORNER_SCALE = floatPreferencesKey("ui_corner_scale")
+        val BUTTON_SIZE = intPreferencesKey("ui_button_size")
+        val LIST_DENSITY = intPreferencesKey("ui_list_density")
         val DISPLAY_SETTING = stringPreferencesKey("display_setting")
         val NETWORK_SETTING = stringPreferencesKey("network_setting")
         val DEVELOPER_MODE = booleanPreferencesKey("developer_mode")

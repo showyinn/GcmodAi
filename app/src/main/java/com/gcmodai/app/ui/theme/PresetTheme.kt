@@ -5,10 +5,7 @@ import androidx.compose.runtime.Composable
 import com.gcmodai.app.ui.theme.presets.AutumnThemePreset
 import com.gcmodai.app.ui.theme.presets.BlackThemePreset
 import com.gcmodai.app.ui.theme.presets.ClaudeThemePreset
-import com.gcmodai.app.ui.theme.presets.LiquidAuroraThemePreset
-import com.gcmodai.app.ui.theme.presets.LiquidMidnightThemePreset
-import com.gcmodai.app.ui.theme.presets.LiquidMintThemePreset
-import com.gcmodai.app.ui.theme.presets.LiquidSunsetThemePreset
+import com.gcmodai.app.ui.theme.presets.AdvancedPresetThemes
 import com.gcmodai.app.ui.theme.presets.MinimalThemePreset
 import com.gcmodai.app.ui.theme.presets.OceanThemePreset
 import com.gcmodai.app.ui.theme.presets.SakuraThemePreset
@@ -27,11 +24,8 @@ data class PresetTheme(
 
 val PresetThemes by lazy {
     listOf(
-        // 液态玻璃主题放最前面：新版默认就是玻璃，先让用户看到能换的 4 种玻璃配色
-        LiquidAuroraThemePreset,
-        LiquidMidnightThemePreset,
-        LiquidMintThemePreset,
-        LiquidSunsetThemePreset,
+        // 高级配色组放最前：手工调过的 4 套 + Material color spec 派生的 4 套
+        *AdvancedPresetThemes.toTypedArray(),
         SakuraThemePreset,
         OceanThemePreset,
         SpringThemePreset,

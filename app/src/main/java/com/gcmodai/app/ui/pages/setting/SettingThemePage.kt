@@ -7,6 +7,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -26,6 +27,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeFlexibleTopAppBar
@@ -58,6 +60,7 @@ import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.util.fastForEach
 import androidx.core.graphics.ColorUtils
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.gcmodai.ui.toast.ToastType
@@ -66,7 +69,8 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import me.rerere.hugeicons.HugeIcons
 import me.rerere.hugeicons.stroke.Delete01
-import me.rerere.hugeicons.stroke.Droplet
+import me.rerere.hugeicons.stroke.ListView
+import me.rerere.hugeicons.stroke.Ruler
 import me.rerere.hugeicons.stroke.FileImport
 import me.rerere.hugeicons.stroke.PaintBrush01
 import me.rerere.hugeicons.stroke.PencilEdit01
@@ -76,18 +80,19 @@ import me.rerere.hugeicons.stroke.Tick01
 import com.gcmodai.app.R
 import com.gcmodai.app.ui.components.nav.BackButton
 import com.gcmodai.app.ui.components.ui.CardGroup
+import com.gcmodai.app.ui.design.ButtonSize
+import com.gcmodai.app.ui.design.ListDensity
+import com.gcmodai.app.ui.design.Md3Panel
 import com.gcmodai.app.ui.components.ui.ConnectedChoiceLabel
 import com.gcmodai.app.ui.components.ui.ConnectedMultiChoiceButtons
 import com.gcmodai.app.ui.components.ui.ItemAction
 import com.gcmodai.app.ui.components.ui.ItemActionMenu
 import com.gcmodai.app.ui.components.ui.switchItem
 import com.gcmodai.app.ui.context.LocalToaster
-import com.gcmodai.app.ui.glass.GlassCard
-import com.gcmodai.app.ui.glass.GlassSpec
-import com.gcmodai.app.ui.glass.WallpaperStyle
 import com.gcmodai.app.ui.pages.setting.components.PresetThemeButtonGroup
 import com.gcmodai.app.ui.theme.CustomColors
 import com.gcmodai.app.ui.theme.CustomTheme
+import com.gcmodai.app.ui.theme.ThemeVariants
 import com.gcmodai.app.ui.theme.LocalDarkMode
 import com.gcmodai.app.utils.plus
 import com.gcmodai.ui.components.GcmodAiConfirmDialog
@@ -159,12 +164,11 @@ fun SettingThemePage(vm: SettingVM = koinViewModel()) {
                             text = stringResource(R.string.setting_theme_page_preset_themes),
                             style = MaterialTheme.typography.titleSmall,
                             color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(start = 4.dp, top = 8.dp, bottom = 8.dp)
+                            modifier = Modifier.padding(start = 6.dp, top = 8.dp, bottom = 8.dp)
                         )
-                        GlassCard(
+                        Md3Panel(
                             modifier = Modifier.fillMaxWidth(),
                             contentPadding = PaddingValues(4.dp),
-                            verticalArrangement = Arrangement.spacedBy(0.dp),
                         ) {
                             PresetThemeButtonGroup(
                                 themeId = settings.themeId,
@@ -177,56 +181,97 @@ fun SettingThemePage(vm: SettingVM = koinViewModel()) {
                     }
                 }
 
-                item("glassAppearance") {
-                CardGroup(
-                    title = { Text("液态玻璃外观") },
-                ) {
-                    formItem(
-                        headlineContent = { Text("玻璃强度") },
-                        supportingContent = { Text(glassLevelLabel(settings.glassLevel)) },
+                // ---- DIY：圆角 / 按钮尺寸 / 列表密度 ----
+                item("uiDiy") {
+                    CardGroup(
+                        title = { Text("界面 DIY") },
                     ) {
-                        ConnectedMultiChoiceButtons(
-                            options = GlassSpec.Levels.indices.toList(),
-                            selected = listOf(settings.glassLevel.coerceIn(0, GlassSpec.Levels.lastIndex)),
-                            onToggle = { level, _ ->
-                                vm.updateSettings { it.copy(glassLevel = level) }
+                        formItem(
+                            headlineContent = { Text("圆角") },
+                            supportingContent = {
+                                Text(
+                                    "当前 %.0f%%：卡片、弹窗、输入框、按钮一起缩放"
+                                        .format(settings.cornerScale * 100)
+                                )
                             },
-                        ) { level, selected ->
-                            ConnectedChoiceLabel(
-                                text = levelLabel(level),
-                                selected = selected,
-                                icon = HugeIcons.Droplet,
-                            )
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Text("利落", style = MaterialTheme.typography.labelSmall)
+                                Slider(
+                                    value = settings.cornerScale,
+                                    onValueChange = { v ->
+                                        vm.updateSettings { it.copy(cornerScale = v) }
+                                    },
+                                    valueRange = 0.5f..1.8f,
+                                    // 0.05 一档，手感够细又不会滑到停不下来
+                                    steps = 25,
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .padding(horizontal = 8.dp),
+                                )
+                                Text("软糯", style = MaterialTheme.typography.labelSmall)
+                            }
+                        }
+                        formItem(
+                            headlineContent = { Text("按钮尺寸") },
+                            supportingContent = {
+                                Text(
+                                    when (settings.buttonSize) {
+                                        0 -> "紧凑：高度 36dp，信息密度高"
+                                        2 -> "宽松：高度 52dp，单手更好点"
+                                        else -> "标准：高度 44dp，符合 Material 建议"
+                                    }
+                                )
+                            },
+                        ) {
+                            ConnectedMultiChoiceButtons(
+                                options = ButtonSize.entries.indices.toList(),
+                                selected = listOf(
+                                    settings.buttonSize.coerceIn(0, ButtonSize.entries.lastIndex)
+                                ),
+                                onToggle = { size, _ ->
+                                    vm.updateSettings { it.copy(buttonSize = size) }
+                                },
+                            ) { size, selected ->
+                                ConnectedChoiceLabel(
+                                    text = ButtonSize.entries[size].label,
+                                    selected = selected,
+                                    icon = HugeIcons.Ruler,
+                                )
+                            }
+                        }
+                        formItem(
+                            headlineContent = { Text("列表密度") },
+                            supportingContent = {
+                                Text(
+                                    when (settings.listDensity) {
+                                        0 -> "紧凑：行高最小，一屏能看更多"
+                                        2 -> "舒适：行距放大，适合大屏"
+                                        else -> "标准：默认节奏"
+                                    }
+                                )
+                            },
+                        ) {
+                            ConnectedMultiChoiceButtons(
+                                options = ListDensity.entries.indices.toList(),
+                                selected = listOf(
+                                    settings.listDensity.coerceIn(0, ListDensity.entries.lastIndex)
+                                ),
+                                onToggle = { d, _ ->
+                                    vm.updateSettings { it.copy(listDensity = d) }
+                                },
+                            ) { d, selected ->
+                                ConnectedChoiceLabel(
+                                    text = ListDensity.entries[d].label,
+                                    selected = selected,
+                                    icon = HugeIcons.ListView,
+                                )
+                            }
                         }
                     }
-                    formItem(
-                        headlineContent = { Text("壁纸风格") },
-                        supportingContent = { Text(wallpaperLabel(settings.glassWallpaper)) },
-                    ) {
-                        ConnectedMultiChoiceButtons(
-                            options = WallpaperStyle.entries.indices.toList(),
-                            selected = listOf(
-                                settings.glassWallpaper.coerceIn(0, WallpaperStyle.entries.lastIndex)
-                            ),
-                            onToggle = { style, _ ->
-                                vm.updateSettings { it.copy(glassWallpaper = style) }
-                            },
-                        ) { style, selected ->
-                            ConnectedChoiceLabel(
-                                text = wallpaperShortLabel(style),
-                                selected = selected,
-                                icon = HugeIcons.PaintBrush01,
-                            )
-                        }
-                    }
-                    switchItem(
-                        checked = settings.glassAnimated,
-                        onCheckedChange = { animated ->
-                            vm.updateSettings { it.copy(glassAnimated = animated) }
-                        },
-                        headlineContent = { Text("壁纸缓慢流动") },
-                        supportingContent = { Text("关掉更省电，静止壁纸同样有玻璃折射") },
-                    )
                 }
             }
 
@@ -308,7 +353,6 @@ fun SettingThemePage(vm: SettingVM = koinViewModel()) {
                     )
                 }
             }
-        }
     }
 
     if (showEditSheet) {
@@ -369,37 +413,6 @@ fun SettingThemePage(vm: SettingVM = koinViewModel()) {
     )
 }
 
-// ---------------------------------------------------------------- 玻璃外观文案
-
-private fun levelLabel(level: Int): String = when (level) {
-    0 -> "轻薄"
-    2 -> "浓稠"
-    else -> "标准"
-}
-
-private fun glassLevelLabel(level: Int): String = when (level) {
-    0 -> "模糊 8 / 折射 6：最清爽，低端机也稳"
-    2 -> "模糊 26 / 折射 20：最像果冻，字要对准"
-    else -> "模糊 16 / 折射 12：默认，效果和性能平衡"
-}
-
-private fun wallpaperShortLabel(style: Int): String = when (
-    WallpaperStyle.entries[style.coerceIn(0, WallpaperStyle.entries.lastIndex)]
-) {
-    WallpaperStyle.AURORA -> "极光"
-    WallpaperStyle.MESH -> "网格"
-    WallpaperStyle.SILK -> "丝绸"
-    WallpaperStyle.SOLID -> "纯色"
-}
-
-private fun wallpaperLabel(style: Int): String = when (
-    WallpaperStyle.entries[style.coerceIn(0, WallpaperStyle.entries.lastIndex)]
-) {
-    WallpaperStyle.AURORA -> "大色团斜向流动，玻璃折射层次最丰富"
-    WallpaperStyle.MESH -> "多色光球叠在深底上，颗粒感强"
-    WallpaperStyle.SILK -> "细长条带，像布料褶皱，最安静"
-    WallpaperStyle.SOLID -> "只用主题色做柔和渐变，最省电"
-}
 
 @Composable
 private fun CustomThemeItem(
@@ -563,6 +576,27 @@ private fun CustomThemeEditSheet(
                         currentTheme = currentTheme.copy(tertiaryColorArgb = it.toArgb().toLong() and 0xFFFFFFFFL)
                     }
                 )
+
+                // 配色风格：同一颗种子色，换风格后整套调色板完全不同
+                Text("配色风格", style = MaterialTheme.typography.titleSmall)
+                Text(
+                    text = "决定主色/副色怎么派生：柔和最耐看，鲜艳更抓眼，极简灰适合长时间阅读",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    ThemeVariants.fastForEach { (id, label) ->
+                        val selected = currentTheme.variant == id
+                        FilterChip(
+                            selected = selected,
+                            onClick = { currentTheme = currentTheme.copy(variant = id) },
+                            label = { Text(label) },
+                        )
+                    }
+                }
 
                 ThemePreview(currentTheme)
             }

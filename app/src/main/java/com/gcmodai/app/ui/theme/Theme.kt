@@ -3,9 +3,11 @@ package com.gcmodai.app.ui.theme
 import android.os.Build
 import androidx.compose.foundation.LocalOverscrollFactory
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialExpressiveTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MotionScheme
+import androidx.compose.material3.Shapes
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.runtime.Composable
@@ -18,8 +20,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
 import kotlinx.serialization.Serializable
+import com.gcmodai.app.ui.design.ButtonSize
+import com.gcmodai.app.ui.design.ListDensity
+import com.gcmodai.app.ui.design.LocalUiStyle
+import com.gcmodai.app.ui.design.UiStyle
 import com.gcmodai.app.ui.hooks.rememberAmoledDarkMode
 import com.gcmodai.app.ui.hooks.rememberCurrentColorMode
 import com.gcmodai.app.ui.hooks.rememberUserSettingsState
@@ -53,6 +60,19 @@ fun GcmodAiTheme(
         ColorMode.DARK -> true
     }
     val amoledDarkMode by rememberAmoledDarkMode()
+
+    // 用户 DIY 的界面风格：圆角倍率 / 按钮尺寸 / 列表密度
+    val uiStyle = remember(settings.cornerScale, settings.buttonSize, settings.listDensity) {
+        UiStyle(
+            cornerScale = settings.cornerScale,
+            buttonSize = ButtonSize.entries[
+                settings.buttonSize.coerceIn(0, ButtonSize.entries.lastIndex)
+            ],
+            density = ListDensity.entries[
+                settings.listDensity.coerceIn(0, ListDensity.entries.lastIndex)
+            ],
+        )
+    }
 
     val colorScheme = when {
         settings.dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
@@ -103,14 +123,33 @@ fun GcmodAiTheme(
         LocalDarkMode provides darkTheme,
         LocalExtendColors provides extendColors,
         LocalOverscrollFactory provides null,
+        LocalUiStyle provides uiStyle,
     ) {
         MaterialExpressiveTheme(
             colorScheme = colorSchemeConverted,
             typography = Typography,
+            shapes = expressiveShapes(uiStyle.cornerScale),
             content = content,
             motionScheme = MotionScheme.expressive()
         )
     }
+}
+
+/**
+ * 由用户圆角倍率生成整站 Shapes。
+ *
+ * MD3 组件的圆角都从 MaterialTheme.shapes 取（Card、Button、TextField、Dialog…），
+ * 所以只改这里，整站圆角风格就统一变了 —— 不需要每个组件单独传 shape。
+ */
+private fun expressiveShapes(scale: Float): Shapes {
+    val s = scale.coerceIn(0.5f, 1.8f)
+    return Shapes(
+        extraSmall = RoundedCornerShape((4f * s).dp),
+        small = RoundedCornerShape((8f * s).dp),
+        medium = RoundedCornerShape((12f * s).dp),
+        large = RoundedCornerShape((16f * s).dp),
+        extraLarge = RoundedCornerShape((28f * s).dp),
+    )
 }
 
 val MaterialTheme.extendColors

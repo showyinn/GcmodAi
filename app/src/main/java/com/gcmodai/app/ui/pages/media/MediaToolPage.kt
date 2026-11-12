@@ -53,8 +53,7 @@ import com.gcmodai.app.data.files.FileFolders
 import com.gcmodai.app.data.files.FilesManager
 import com.gcmodai.app.data.media.MediaProbeClient
 import com.gcmodai.app.ui.components.nav.BackButton
-import com.gcmodai.app.ui.glass.GlassCard
-import com.gcmodai.app.ui.glass.GlassPanel
+import com.gcmodai.app.ui.design.Md3Panel
 import com.gcmodai.app.ui.context.LocalToaster
 import com.gcmodai.app.ui.theme.CustomColors
 import com.gcmodai.app.utils.FileExporter
@@ -164,7 +163,7 @@ fun MediaToolPage(
             }
 
             info?.let { media ->
-                GlassCard(modifier = Modifier.fillMaxWidth(), radius = 24.dp, contentPadding = PaddingValues(16.dp)) {
+                Md3Panel(modifier = Modifier.fillMaxWidth(), radius = 24.dp, contentPadding = PaddingValues(16.dp)) {
                     Column(
                         modifier = Modifier.padding(16.dp),
                         verticalArrangement = Arrangement.spacedBy(6.dp),
@@ -279,7 +278,7 @@ fun MediaToolPage(
             }
 
             audioTrack?.let { track ->
-                GlassCard(modifier = Modifier.fillMaxWidth(), radius = 24.dp, contentPadding = PaddingValues(16.dp)) {
+                Md3Panel(modifier = Modifier.fillMaxWidth(), radius = 24.dp, contentPadding = PaddingValues(16.dp)) {
                     Column(
                         modifier = Modifier.padding(16.dp),
                         verticalArrangement = Arrangement.spacedBy(6.dp),
@@ -306,7 +305,7 @@ fun MediaToolPage(
 @Composable
 private fun HeroPanel(onPick: () -> Unit, fileName: String?, busy: Boolean) {
     // 主视觉：玻璃底 + 主题色渐变染色
-    GlassPanel(
+    Md3Panel(
         modifier = Modifier.fillMaxWidth(),
         radius = 26.dp,
     ) {

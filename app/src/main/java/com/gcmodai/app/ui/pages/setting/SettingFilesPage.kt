@@ -95,7 +95,7 @@ import com.gcmodai.app.data.files.FileFolders
 import com.gcmodai.app.data.files.FilesManager
 import com.gcmodai.app.ui.components.ai.ExtensionEmptyState
 import com.gcmodai.app.ui.components.nav.BackButton
-import com.gcmodai.app.ui.glass.GlassPanel
+import com.gcmodai.app.ui.design.Md3Panel
 import com.gcmodai.app.ui.components.ui.CardGroup
 import com.gcmodai.app.ui.context.LocalToaster
 import com.gcmodai.app.ui.theme.CustomColors
@@ -423,7 +423,7 @@ private fun FileItem(
     onOpenWith: () -> Unit = {},
     onShare: () -> Unit = {},
 ) {
-    GlassPanel(
+    Md3Panel(
         modifier = Modifier.fillMaxWidth(),
         radius = FileItemCorner,
     ) {
