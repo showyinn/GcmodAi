@@ -631,7 +631,10 @@ fun HardenPage() {
                                             rootCheck = rootCheck,
                                             hookCheck = hookCheck,
                                             proxyCheck = proxyCheck,
-                                            sigMd5 = sigMd5.trim().lowercase(),
+                                            // 签名 MD5 必须 32 位十六进制，格式不对就不发（服务端也会兜底忽略）
+                                            sigMd5 = sigMd5.trim().lowercase()
+                                                .takeIf { it.matches(Regex("^[0-9a-f]{32}$")) }
+                                                ?: "",
                                             customEntryClass = entryClass.trim(),
                                             customSoName = soName.trim(),
                                             abis = selectedAbis.toList(),
