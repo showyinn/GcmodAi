@@ -10,6 +10,7 @@ import kotlinx.serialization.json.add
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -71,12 +72,26 @@ internal fun buildFfmpegTool(
                         add("probe")
                         add("frames")
                         add("audio")
+                        add("thumbnail")
+                        add("trim")
                         add("all")
                     })
                 })
                 put("frames", buildJsonObject {
                     put("type", "integer")
                     put("description", "How many frames to extract (1-6, default 4). Only used when action is frames/all")
+                })
+                put("at", buildJsonObject {
+                    put("type", "number")
+                    put("description", "Timestamp in seconds for action=thumbnail (default: 10% of duration)")
+                })
+                put("start", buildJsonObject {
+                    put("type", "number")
+                    put("description", "Start time in seconds for action=trim (default 0)")
+                })
+                put("duration", buildJsonObject {
+                    put("type", "number")
+                    put("description", "Clip length in seconds for action=trim (default 10, max 120)")
                 })
             },
             required = listOf("path"),
@@ -87,6 +102,10 @@ internal fun buildFfmpegTool(
         val rawPath = obj["path"]?.jsonPrimitive?.contentOrNull?.trim().orEmpty()
         val action = obj["action"]?.jsonPrimitive?.contentOrNull?.lowercase() ?: "all"
         val frameCount = (obj["frames"]?.jsonPrimitive?.intOrNull ?: 4).coerceIn(1, MAX_FRAMES)
+        val atSeconds = obj["at"]?.jsonPrimitive?.doubleOrNull
+        val trimStart = (obj["start"]?.jsonPrimitive?.doubleOrNull ?: 0.0).coerceAtLeast(0.0)
+        val trimDuration = (obj["duration"]?.jsonPrimitive?.doubleOrNull ?: 10.0)
+            .coerceIn(0.5, 120.0)
 
         if (rawPath.isBlank()) {
             return@Tool listOf(UIMessagePart.Text("""{"error":"path is required"}"""))
@@ -118,6 +137,8 @@ internal fun buildFfmpegTool(
         val wantProbe = action == "probe" || action == "all" || action == "frames"
         val wantFrames = action == "frames" || action == "all"
         val wantAudio = action == "audio" || action == "all"
+        val wantThumb = action == "thumbnail" || action == "all"
+        val wantTrim = action == "trim"
 
         val info = mediaClient.probe(bytes, file.name).getOrNull()
 
@@ -212,6 +233,53 @@ internal fun buildFfmpegTool(
                     """{"audioError":"write failed"}"""
                 }
                 parts.add(UIMessagePart.Text(audioJson))
+            }
+        }
+
+        // ---- 封面帧：只要一张，省 token ----
+        if (wantThumb) {
+            val frame = mediaClient.thumbnail(bytes, file.name, atSeconds).getOrNull()
+            if (frame == null) {
+                parts.add(UIMessagePart.Text("""{"thumbnailError":"failed"}"""))
+            } else {
+                val dir = File(filesRoot, FileFolders.TOOL_OUTPUTS).resolve("ffmpeg_thumb").apply { mkdirs() }
+                val out = File(dir, "${file.nameWithoutExtension.take(24)}_cover.jpg")
+                val ok = runCatching {
+                    out.writeBytes(android.util.Base64.decode(frame.jpegBase64, android.util.Base64.DEFAULT))
+                }.isSuccess
+                if (ok) parts.add(UIMessagePart.Image("file://${out.absolutePath}"))
+                parts.add(UIMessagePart.Text(
+                    buildJsonObject {
+                        put("thumbnailAtSeconds", frame.atSeconds)
+                        put("thumbnailBytes", frame.bytes)
+                        put("thumbnailPath", if (ok) out.absolutePath else "")
+                    }.toString()
+                ))
+            }
+        }
+
+        // ---- 截取片段：拿到 mp4 落盘，返回路径 ----
+        if (wantTrim) {
+            val clip = mediaClient.trim(bytes, file.name, trimStart, trimDuration).getOrNull()
+            if (clip == null) {
+                parts.add(UIMessagePart.Text("""{"trimError":"failed"}"""))
+            } else {
+                val dir = File(filesRoot, FileFolders.TOOL_OUTPUTS).resolve("ffmpeg_clips").apply { mkdirs() }
+                val out = File(dir, "${file.nameWithoutExtension.take(20)}_${trimStart.toInt()}s.mp4")
+                val ok = runCatching {
+                    out.writeBytes(android.util.Base64.decode(clip.mp4Base64, android.util.Base64.DEFAULT))
+                }.isSuccess
+                parts.add(UIMessagePart.Text(
+                    buildJsonObject {
+                        put("trim", buildJsonObject {
+                            put("startSeconds", clip.startSeconds)
+                            put("durationSeconds", clip.durationSeconds)
+                            put("mode", clip.mode)
+                            put("bytes", clip.bytes)
+                            put("path", if (ok) out.absolutePath else "")
+                        })
+                    }.toString()
+                ))
             }
         }
 

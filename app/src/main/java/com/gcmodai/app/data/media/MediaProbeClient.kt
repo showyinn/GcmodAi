@@ -99,6 +99,17 @@ class MediaProbeClient(
     )
 
     @Serializable
+    data class TrimmedClip(
+        val startSeconds: Double = 0.0,
+        val durationSeconds: Double = 0.0,
+        val totalSeconds: Double = 0.0,
+        /** copy = 无损快速切（关键帧对齐）；reencode = 重编码（切点精确） */
+        val mode: String = "",
+        val bytes: Long = 0,
+        val mp4Base64: String = "",
+    )
+
+    @Serializable
     private data class Envelope<T>(
         val success: Boolean = false,
         val data: T? = null,
@@ -125,6 +136,32 @@ class MediaProbeClient(
     /** 抽出单声道 16k mp3 音轨，给只吃音频的模型。 */
     suspend fun audio(bytes: ByteArray, fileName: String): Result<AudioTrack> =
         call("/api/media/audio", bytes, fileName, emptyMap(), AudioTrack.serializer())
+
+    /** 取某一时刻的单帧（封面/关键画面），at 为空时服务端取 10% 位置 */
+    suspend fun thumbnail(
+        bytes: ByteArray,
+        fileName: String,
+        atSeconds: Double? = null,
+    ): Result<Frame> = call(
+        "/api/media/thumbnail", bytes, fileName,
+        buildMap { atSeconds?.let { put("X-At", it.toString()) } },
+        Frame.serializer(),
+    )
+
+    /** 按时间区间截取一段视频，返回 mp4（base64） */
+    suspend fun trim(
+        bytes: ByteArray,
+        fileName: String,
+        startSeconds: Double = 0.0,
+        durationSeconds: Double = 10.0,
+    ): Result<TrimmedClip> = call(
+        "/api/media/trim", bytes, fileName,
+        mapOf(
+            "X-Start" to startSeconds.toString(),
+            "X-Duration" to durationSeconds.toString(),
+        ),
+        TrimmedClip.serializer(),
+    )
 
     private suspend fun <T> call(
         path: String,
