@@ -101,6 +101,14 @@ sealed class LocalToolOption {
      * 存在的唯一目的：让反序列化永不失败。旧版本写入的、或未来版本新增的
      * 工具名，解析成它之后在 [LocalTools.getTools] 里自然被忽略。
      */
+    /**
+     * ffmpeg：让 AI 直接解析设备上的视频/音频（服务器端 ffmpeg 执行）。
+     * 打开后模型能拿到真实参数、抽取视频帧当图片看、抽出音轨。
+     */
+    @Serializable
+    @SerialName("ffmpeg")
+    data object Ffmpeg : LocalToolOption()
+
     @Serializable
     @SerialName("unknown")
     data object Unknown : LocalToolOption()
@@ -120,6 +128,7 @@ private val SERIAL_NAMES: Map<String, LocalToolOption> = listOf(
     "calendar" to LocalToolOption.Calendar,
     "chart_display" to LocalToolOption.ChartDisplay,
     "gcmodai_official" to LocalToolOption.GcmodAiOfficial,
+    "ffmpeg" to LocalToolOption.Ffmpeg,
     "unknown" to LocalToolOption.Unknown,
 ).toMap()
 

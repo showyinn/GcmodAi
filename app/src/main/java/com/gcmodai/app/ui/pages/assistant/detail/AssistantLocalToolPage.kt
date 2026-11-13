@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.gcmodai.ui.toast.ToastType
 import me.rerere.hugeicons.HugeIcons
+import me.rerere.hugeicons.stroke.Video01
 import me.rerere.hugeicons.stroke.Folder01
 import me.rerere.hugeicons.stroke.Computer
 import me.rerere.hugeicons.stroke.ServerStack01
@@ -243,6 +244,12 @@ private fun AssistantLocalToolContent(
                 icon = HugeIcons.ServerStack01,
                 title = R.string.assistant_page_local_tools_ssh_title,
                 description = R.string.assistant_page_local_tools_ssh_desc,
+            )
+            toolItem(
+                option = LocalToolOption.Ffmpeg,
+                icon = HugeIcons.Video01,
+                title = R.string.assistant_page_local_tools_ffmpeg_title,
+                description = R.string.assistant_page_local_tools_ffmpeg_desc,
             )
             toolItem(
                 option = LocalToolOption.PcControl,

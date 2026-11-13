@@ -51,6 +51,8 @@ data class Assistant(
         LocalToolOption.SshRemote,
         // 电脑控制：AI 在用户整台电脑上执行命令、改配置、装环境
         LocalToolOption.PcControl,
+        // 音视频解析：用户问「这个视频讲了什么」时，模型自己调 ffmpeg 抽帧来看
+        LocalToolOption.Ffmpeg,
     ),
     val enableWebSearch: Boolean = false, // 网络搜索开关(每个助手独立)
     val workspaceId: Uuid? = null,

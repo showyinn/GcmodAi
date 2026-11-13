@@ -1382,7 +1382,9 @@ mDNS 地址：使用 .local 主机名，同一网络中的其他设备可通过�
   <string name="skills_page_search_no_result">没有匹配的技能</string>
   <string name="assistant_page_local_tools_chart_display_title">图表显示</string>
   <string name="assistant_page_local_tools_chart_display_desc">让 AI 显示折线图、柱状图和散点图</string>
-    <string name="assistant_page_local_tools_gcmodai_title">GcmodAi 官方工具</string>
+    <string name="assistant_page_local_tools_ffmpeg_title">ffmpeg 音视频解析</string>
+  <string name="assistant_page_local_tools_ffmpeg_desc">让 AI 直接用 ffmpeg 解析设备上的视频/音频：真实时长、编码、分辨率，可抽帧当图片看、可抽出音轨。解析在服务器完成，手机端零 ffmpeg 体积。</string>
+  <string name="assistant_page_local_tools_gcmodai_title">GcmodAi 官方工具</string>
     <string name="assistant_page_local_tools_gcmodai_desc">内置计算器、文本统计、日期计算、哈希、JSON、单位换算与编解码，全部本地运算，不联网。</string>
   <string name="chat_message_tool_chart_display">显示图表</string>
   <string name="chat_message_tool_chart_display_with_title">显示图表：%1$s</string>
@@ -1803,6 +1805,5 @@ mDNS 地址：使用 .local 主机名，同一网络中的其他设备可通过�
     <string name="assistant_page_local_tools_pc_desc">Let AI run commands, read and write files, and set up software on your connected computer</string>
     <string name="binary_tool_entry">SO 分析</string>
     <string name="harden_entry">APK 加固</string>
-  <string name="media_tool_entry">音视频工具</string>
     <string name="setting_files_page_folder_harden">加固包</string>
 </resources>

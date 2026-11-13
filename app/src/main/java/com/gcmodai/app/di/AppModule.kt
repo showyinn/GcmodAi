@@ -55,6 +55,7 @@ val appModule = module {
             workspaceRepository = get<com.gcmodai.app.data.workspace.WorkspaceRepository>(),
             sshRepository = get<com.gcmodai.app.data.repository.WorkspaceRepository>(),
             pcAgentRepository = get<com.gcmodai.app.data.agent.PcAgentRepository>(),
+            mediaProbeClient = get(),
         )
     }
 

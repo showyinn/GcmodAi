@@ -46,6 +46,8 @@ data class Settings(
     /** DIY：列表密度 0=紧凑 1=标准 2=舒适 */
     val listDensity: Int = 1,
     val developerMode: Boolean = false,
+    /** ffmpeg 工具的一次性迁移标记：老用户升级后自动补上该工具（之后用户自己关掉就不再补） */
+    val ffmpegToolMigrated: Boolean = false,
     val displaySetting: DisplaySetting = DisplaySetting(),
     val networkSetting: NetworkSetting = NetworkSetting(),
     val favoriteModels: List<Uuid> = emptyList(),

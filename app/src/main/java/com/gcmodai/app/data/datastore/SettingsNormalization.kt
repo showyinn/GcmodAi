@@ -45,10 +45,27 @@ internal fun Settings.withBuiltInDefaults(): Settings {
             ttsProviders.add(defaultTTSProvider.copyProvider())
         }
     }
+    // ffmpeg 工具一次性迁移：3.9.30 起默认开启，但老用户的助手列表是持久化的，
+    // 不补的话他们永远看不到这个工具。用标志位保证只补一次 —— 用户之后自己关掉不会再被塞回来。
+    val migratedAssistants = if (ffmpegToolMigrated) {
+        assistants
+    } else {
+        assistants.map { assistant ->
+            if (com.gcmodai.app.data.ai.tools.local.LocalToolOption.Ffmpeg in assistant.localTools) {
+                assistant
+            } else {
+                assistant.copy(
+                    localTools = assistant.localTools +
+                        com.gcmodai.app.data.ai.tools.local.LocalToolOption.Ffmpeg
+                )
+            }
+        }
+    }
     return copy(
         providers = providers,
-        assistants = assistants,
+        assistants = migratedAssistants,
         ttsProviders = ttsProviders,
+        ffmpegToolMigrated = true,
     )
 }
 

@@ -17,6 +17,8 @@ class LocalTools(
     private val sshRepository: com.gcmodai.app.data.repository.WorkspaceRepository? = null,
     /** Windows 助手（exe）客户端：不配 SSH 也能控制 Windows 电脑 */
     private val pcAgentRepository: com.gcmodai.app.data.agent.PcAgentRepository? = null,
+    /** 音视频解析：服务器端 ffmpeg（工具名 ffmpeg） */
+    private val mediaProbeClient: com.gcmodai.app.data.media.MediaProbeClient? = null,
 ) {
     val javascriptTool by lazy { buildJavascriptTool() }
 
@@ -35,6 +37,10 @@ class LocalTools(
     val calendarCreateTool by lazy { buildCalendarCreateTool(context) }
 
     val chartDisplayTool by lazy { buildChartDisplayTool() }
+
+    val ffmpegTool: Tool? by lazy {
+        mediaProbeClient?.let { buildFfmpegTool(it, context.filesDir) }
+    }
 
     fun getTools(options: List<LocalToolOption>): List<Tool> {
         // 过滤掉无法识别的占位项（旧版本或未来版本写入的工具名）
@@ -61,6 +67,9 @@ class LocalTools(
         if (enabled.contains(LocalToolOption.Calendar)) {
             tools.add(calendarQueryTool)
             tools.add(calendarCreateTool)
+        }
+        if (enabled.contains(LocalToolOption.Ffmpeg)) {
+            ffmpegTool?.let { tools.add(it) }
         }
         if (enabled.contains(LocalToolOption.ChartDisplay)) {
             tools.add(chartDisplayTool)

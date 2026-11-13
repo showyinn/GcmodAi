@@ -237,13 +237,6 @@ internal fun FilesPicker(
                                 navController.navigate(Screen.Harden)
                             }
                         )
-                        // [media-entry-20261112] 音视频工具：服务器 ffmpeg 解析/抽帧/抽音轨
-                        add(
-                            AttachmentAction(HugeIcons.Video01, R.string.media_tool_entry) {
-                                onDismiss()
-                                navController.navigate(Screen.MediaTool)
-                            }
-                        )
                         onStartVoiceMode?.let { start ->
                             add(AttachmentAction(HugeIcons.Voice, R.string.chat_page_voice_title, start))
                         }

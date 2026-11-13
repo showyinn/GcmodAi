@@ -121,6 +121,8 @@ class SettingsStore internal constructor(
         val DISPLAY_SETTING = stringPreferencesKey("display_setting")
         val NETWORK_SETTING = stringPreferencesKey("network_setting")
         val DEVELOPER_MODE = booleanPreferencesKey("developer_mode")
+        // ffmpeg 工具一次性迁移（老用户升级后自动补上）
+        val FFMPEG_TOOL_MIGRATED = booleanPreferencesKey("ffmpeg_tool_migrated")
 
         // 模型选择
         val FAVORITE_MODELS = stringPreferencesKey("favorite_models")
