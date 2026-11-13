@@ -110,6 +110,22 @@ class MediaProbeClient(
     )
 
     @Serializable
+    data class ConvertedVideo(
+        /** target-size / target-size-retry / crf */
+        val mode: String = "",
+        val sourceBytes: Long = 0,
+        val bytes: Long = 0,
+        val ratio: Double = 0.0,
+        val attempts: List<Long> = emptyList(),
+        val durationSeconds: Double = 0.0,
+        val width: Int = 0,
+        val height: Int = 0,
+        val hasVideo: Boolean = false,
+        val hasAudio: Boolean = false,
+        val mp4Base64: String = "",
+    )
+
+    @Serializable
     private data class Envelope<T>(
         val success: Boolean = false,
         val data: T? = null,
@@ -161,6 +177,23 @@ class MediaProbeClient(
             "X-Duration" to durationSeconds.toString(),
         ),
         TrimmedClip.serializer(),
+    )
+
+    /** 转码/压缩：按目标体积或目标质量压小视频 */
+    suspend fun convert(
+        bytes: ByteArray,
+        fileName: String,
+        targetBytes: Long = 0L,
+        maxWidth: Int = 720,
+        crf: Int = 28,
+    ): Result<ConvertedVideo> = call(
+        "/api/media/convert", bytes, fileName,
+        buildMap {
+            if (targetBytes > 0) put("X-Target-Bytes", targetBytes.toString())
+            put("X-Max-Width", maxWidth.toString())
+            put("X-Crf", crf.toString())
+        },
+        ConvertedVideo.serializer(),
     )
 
     private suspend fun <T> call(

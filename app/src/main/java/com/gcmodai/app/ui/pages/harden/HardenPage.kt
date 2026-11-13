@@ -6,6 +6,7 @@ import android.net.Uri
 import android.provider.OpenableColumns
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -119,6 +120,10 @@ fun HardenPage() {
     var soName by remember { mutableStateOf("") }
     var selectedAbis by remember { mutableStateOf(setOf("arm64-v8a")) }
     var classRules by remember { mutableStateOf("") }
+    var stringFogRules by remember { mutableStateOf("") }
+    var jobs by remember { mutableStateOf<List<HardenClient.JobSummary>>(emptyList()) }
+    var jobsLoading by remember { mutableStateOf(false) }
+    var jobTab by remember { mutableStateOf("active") }
     var showAdvanced by remember { mutableStateOf(false) }
 
     var busy by remember { mutableStateOf(false) }
@@ -253,6 +258,140 @@ fun HardenPage() {
             }
 
             // ---------------- 功能选择（对照云镜）：一眼看清这单开了什么 ----------------
+            // ---------------- 任务列表（进行中 / 已完成） ----------------
+            item("jobs") {
+                SectionCard(
+                    title = "任务列表",
+                    trailing = {
+                        TextButton(
+                            enabled = !jobsLoading,
+                            onClick = {
+                                jobsLoading = true
+                                scope.launch {
+                                    client.listJobs(30)
+                                        .onSuccess { jobs = it }
+                                        .onFailure { toaster.show("读取任务失败：${it.message}") }
+                                    jobsLoading = false
+                                }
+                            },
+                        ) { Text(if (jobsLoading) "刷新中…" else "刷新") }
+                    },
+                ) {
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        FilterChip(
+                            selected = jobTab == "active",
+                            onClick = { jobTab = "active" },
+                            label = {
+                                Text("进行中（${jobs.count { it.state == "running" || it.state == "queued" }}）")
+                            },
+                        )
+                        FilterChip(
+                            selected = jobTab == "done",
+                            onClick = { jobTab = "done" },
+                            label = {
+                                Text("已完成（${jobs.count { it.state == "done" || it.state == "delivered" || it.state == "failed" }}）")
+                            },
+                        )
+                    }
+                    val shown = jobs.filter {
+                        if (jobTab == "active") {
+                            it.state == "running" || it.state == "queued"
+                        } else {
+                            it.state == "done" || it.state == "delivered" || it.state == "failed"
+                        }
+                    }.take(8)
+                    if (shown.isEmpty()) {
+                        Text(
+                            if (jobs.isEmpty()) "还没有任务，选个 APK 跑一单吧" else "这个分类下暂无任务",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    } else {
+                        shown.forEach { job ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .clickable {
+                                        scope.launch {
+                                            client.status(job.id).onSuccess { st ->
+                                                logs = st.log.takeLast(80)
+                                                stateText = "历史任务：${st.state}（${st.elapsed}s）"
+                                            }
+                                        }
+                                    }
+                                    .padding(vertical = 6.dp, horizontal = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Surface(
+                                    shape = RoundedCornerShape(50),
+                                    color = when (job.state) {
+                                        "done", "delivered" -> MaterialTheme.colorScheme.primary
+                                        "failed" -> MaterialTheme.colorScheme.errorContainer
+                                        else -> MaterialTheme.colorScheme.secondaryContainer
+                                    },
+                                ) {
+                                    Text(
+                                        when (job.state) {
+                                            "queued" -> "排队"
+                                            "running" -> "进行中"
+                                            "done" -> "已完成"
+                                            "delivered" -> "已下载"
+                                            "failed" -> "失败"
+                                            else -> job.state
+                                        },
+                                        style = MaterialTheme.typography.labelSmall,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                                    )
+                                }
+                                Spacer(Modifier.width(8.dp))
+                                Column(Modifier.weight(1f)) {
+                                    Text(
+                                        "%d MB · %ds".format((job.size ?: 0L) / 1024 / 1024, job.elapsed),
+                                        style = MaterialTheme.typography.bodySmall,
+                                    )
+                                    Text(
+                                        job.logTail,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                    )
+                                }
+                                if (job.downloadable) {
+                                    TextButton(
+                                        onClick = {
+                                            scope.launch {
+                                                client.download(job.id)
+                                                    .onSuccess { bytes ->
+                                                        resultBytes = bytes
+                                                        runCatching {
+                                                            filesManager.saveManagedFromBytes(
+                                                                folder = FileFolders.HARDEN,
+                                                                bytes = bytes,
+                                                                displayName = "hardened-${job.id.take(6)}.apk",
+                                                                mimeType = "application/vnd.android.package-archive",
+                                                            )
+                                                        }.onSuccess {
+                                                            savedInfo = "已保存到「存储管理 → 加固包」"
+                                                        }
+                                                        stateText = "已取回结果（%.1f MB）"
+                                                            .format(bytes.size / 1024f / 1024f)
+                                                    }
+                                                    .onFailure { toaster.show("下载失败：${it.message}") }
+                                            }
+                                        }
+                                    ) { Text("下载", maxLines = 1) }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
             item("features") {
                 Md3Panel(
                     modifier = Modifier.fillMaxWidth(),
@@ -474,6 +613,17 @@ fun HardenPage() {
                                 }
                             }
                             OutlinedTextField(
+                                value = stringFogRules,
+                                onValueChange = { stringFogRules = it },
+                                label = { Text("字符串加密规则（每行一条）") },
+                                supportingText = {
+                                    Text("命中的类会把 const-string 明文加密成运行时解密；留空=不加密")
+                                },
+                                minLines = 2,
+                                maxLines = 5,
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                            OutlinedTextField(
                                 value = classRules,
                                 onValueChange = { classRules = it },
                                 label = { Text("保护类规则（每行一条）") },
@@ -639,6 +789,9 @@ fun HardenPage() {
                                             customSoName = soName.trim(),
                                             abis = selectedAbis.toList(),
                                             classRules = classRules.lines()
+                                                .map { it.trim() }
+                                                .filter { it.isNotEmpty() },
+                                            stringFogRules = stringFogRules.lines()
                                                 .map { it.trim() }
                                                 .filter { it.isNotEmpty() },
                                         )
@@ -968,6 +1121,36 @@ private fun ClassRow(
                 )
                 Text("抽取", style = MaterialTheme.typography.labelSmall)
             }
+        }
+    }
+}
+
+
+@Composable
+private fun SectionCard(
+    title: String,
+    trailing: (@Composable () -> Unit)? = null,
+    content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit,
+) {
+    Md3Panel(
+        modifier = Modifier.fillMaxWidth(),
+        radius = 22.dp,
+        contentPadding = PaddingValues(0.dp),
+    ) {
+        Column(
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    title,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.weight(1f),
+                )
+                trailing?.invoke()
+            }
+            content()
         }
     }
 }

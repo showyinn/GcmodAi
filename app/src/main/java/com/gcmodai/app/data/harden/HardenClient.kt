@@ -41,6 +41,8 @@ class HardenClient(
         val dex2cClasses: List<String> = emptyList(),
         /** 类规则：+com.foo.* 包含 / -com.foo.Bar 排除，每行一条（服务端算成类清单） */
         val classRules: List<String> = emptyList(),
+        /** 字符串加密：对命中的类加密 const-string 字面量（同样支持 +包含/-排除 规则） */
+        val stringFogRules: List<String> = emptyList(),
         /** 反调试守卫：注入保护 .so（ptrace / TracerPid / Frida 等检测，命中即退出） */
         val antiDebug: Boolean = false,
         val rootCheck: Boolean = false,
@@ -87,6 +89,21 @@ class HardenClient(
         val classes: List<DexClass> = emptyList(),
     )
 
+    /** 任务列表条目（加固页「任务列表」用） */
+    @Serializable
+    data class JobSummary(
+        val id: String = "",
+        val state: String = "",
+        val created: Long = 0,
+        val elapsed: Long = 0,
+        val size: Long? = null,
+        @SerialName("logTail") val logTail: String = "",
+        val downloadable: Boolean = false,
+    )
+
+    @Serializable
+    private data class JobListData(val jobs: List<JobSummary> = emptyList())
+
     @Serializable
     private data class Envelope<T>(val success: Boolean = false, val data: T? = null, val message: String? = null)
 
@@ -107,6 +124,9 @@ class HardenClient(
         )
         append(",\"class_rules\":").append(
             o.classRules.joinToString(",", "[", "]") { "\"" + it.replace("\"", "") + "\"" }
+        )
+        append(",\"string_fog_rules\":").append(
+            o.stringFogRules.joinToString(",", "[", "]") { "\"" + it.replace("\"", "") + "\"" }
         )
         append(",\"anti_debug\":").append(o.antiDebug)
         append(",\"root_check\":").append(o.rootCheck)
@@ -170,6 +190,24 @@ class HardenClient(
                 delay(2500)
             }
             error("扫描超时，请稍后重试")
+        }
+    }
+
+    /** 最近的任务列表（进行中 / 已完成都在里面，按创建时间倒序） */
+    suspend fun listJobs(limit: Int = 30): Result<List<JobSummary>> = withContext(Dispatchers.IO) {
+        val t = token() ?: return@withContext Result.failure(IllegalStateException("请先登录账号"))
+        runCatching {
+            val req = Request.Builder()
+                .url("$BASE_URL/api/harden/jobs?limit=$limit")
+                .header("Authorization", "Bearer $t")
+                .get()
+                .build()
+            client.newCall(req).execute().use { resp ->
+                val body = resp.body.string()
+                if (!resp.isSuccessful) error("查询失败 ${resp.code}")
+                json.decodeFromString(Envelope.serializer(JobListData.serializer()), body).data?.jobs
+                    ?: emptyList()
+            }
         }
     }
 

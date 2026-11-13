@@ -52,7 +52,8 @@ internal fun buildFfmpegTool(
         Returns real metadata: duration, container, video codec/resolution/fps, audio codec/channels/sample rate, bitrate.
         With action=frames it extracts evenly spaced JPEG frames and returns them as images, so you can actually see
         what happens in the video. With action=audio it converts the audio track to a mono mp3 and returns its path.
-        Use this whenever the user asks about a video/audio file's content, length, resolution, or format.
+        action=convert transcodes/compresses the video (e.g. 200MB down to 30MB) before analysis; it returns the output path.
+        Use this whenever the user asks about a video/audio file's content, length, resolution, format, or needs it smaller.
     """.trimIndent().replace("\n", " "),
     parameters = {
         InputSchema.Obj(
@@ -74,6 +75,7 @@ internal fun buildFfmpegTool(
                         add("audio")
                         add("thumbnail")
                         add("trim")
+                        add("convert")
                         add("all")
                     })
                 })
@@ -93,6 +95,18 @@ internal fun buildFfmpegTool(
                     put("type", "number")
                     put("description", "Clip length in seconds for action=trim (default 10, max 120)")
                 })
+                put("target_mb", buildJsonObject {
+                    put("type", "number")
+                    put("description", "Target file size in MB for action=convert (e.g. 30). Omit to use crf quality mode")
+                })
+                put("max_width", buildJsonObject {
+                    put("type", "integer")
+                    put("description", "Max output width for action=convert (default 720; only downscales)")
+                })
+                put("crf", buildJsonObject {
+                    put("type", "integer")
+                    put("description", "Quality for action=convert when target_mb is omitted (18 best - 32 smallest, default 28)")
+                })
             },
             required = listOf("path"),
         )
@@ -106,6 +120,9 @@ internal fun buildFfmpegTool(
         val trimStart = (obj["start"]?.jsonPrimitive?.doubleOrNull ?: 0.0).coerceAtLeast(0.0)
         val trimDuration = (obj["duration"]?.jsonPrimitive?.doubleOrNull ?: 10.0)
             .coerceIn(0.5, 120.0)
+        val targetMb = obj["target_mb"]?.jsonPrimitive?.doubleOrNull
+        val maxWidth = (obj["max_width"]?.jsonPrimitive?.intOrNull ?: 720).coerceIn(240, 2160)
+        val crf = (obj["crf"]?.jsonPrimitive?.intOrNull ?: 28).coerceIn(18, 34)
 
         if (rawPath.isBlank()) {
             return@Tool listOf(UIMessagePart.Text("""{"error":"path is required"}"""))
@@ -139,6 +156,7 @@ internal fun buildFfmpegTool(
         val wantAudio = action == "audio" || action == "all"
         val wantThumb = action == "thumbnail" || action == "all"
         val wantTrim = action == "trim"
+        val wantConvert = action == "convert"
 
         val info = mediaClient.probe(bytes, file.name).getOrNull()
 
@@ -280,6 +298,46 @@ internal fun buildFfmpegTool(
                         })
                     }.toString()
                 ))
+            }
+        }
+
+        // ---- 转码压缩：把大视频压小，落盘后返回路径 ----
+        if (wantConvert) {
+            val targetBytes = targetMb?.let { (it * 1024 * 1024).toLong() } ?: 0L
+            val converted = mediaClient.convert(
+                bytes, file.name, targetBytes = targetBytes, maxWidth = maxWidth, crf = crf,
+            ).getOrNull()
+            if (converted == null) {
+                parts.add(UIMessagePart.Text("""{"convertError":"failed"}"""))
+            } else {
+                val dir = File(filesRoot, FileFolders.TOOL_OUTPUTS).resolve("ffmpeg_conv").apply { mkdirs() }
+                val out = File(dir, "${file.nameWithoutExtension.take(20)}_c.mp4")
+                val ok = runCatching {
+                    out.writeBytes(android.util.Base64.decode(converted.mp4Base64, android.util.Base64.DEFAULT))
+                }.isSuccess
+                parts.add(UIMessagePart.Text(
+                    buildJsonObject {
+                        put("convert", buildJsonObject {
+                            put("mode", converted.mode)
+                            put("sourceMB", "%.2f".format(converted.sourceBytes / 1048576.0))
+                            put("outputMB", "%.2f".format(converted.bytes / 1048576.0))
+                            put("ratio", converted.ratio)
+                            put("width", converted.width)
+                            put("height", converted.height)
+                            put("path", if (ok) out.absolutePath else "")
+                        })
+                    }.toString()
+                ))
+                // 压完顺手给一帧封面，方便模型确认画面没坏
+                mediaClient.thumbnail(bytes, file.name, null).getOrNull()?.let { frame ->
+                    val thumb = File(dir, "${file.nameWithoutExtension.take(20)}_c.jpg")
+                    if (runCatching {
+                            thumb.writeBytes(android.util.Base64.decode(frame.jpegBase64, android.util.Base64.DEFAULT))
+                        }.isSuccess
+                    ) {
+                        parts.add(UIMessagePart.Image("file://${thumb.absolutePath}"))
+                    }
+                }
             }
         }
 
