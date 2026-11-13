@@ -91,6 +91,10 @@ internal val SETTINGS_FIELDS: List<SettingsField<*, *>> = with(SettingsStore) {
         json(NETWORK_SETTING, Settings::networkSetting) { copy(networkSetting = it) },
         plain(DEVELOPER_MODE, Settings::developerMode) { copy(developerMode = it) },
         plain(FFMPEG_TOOL_MIGRATED, Settings::ffmpegToolMigrated) { copy(ffmpegToolMigrated = it) },
+        plain(AUTO_CHECK_UPDATES, Settings::autoCheckUpdates) { copy(autoCheckUpdates = it) },
+        plain(AUTO_DOWNLOAD_UPDATES, Settings::autoDownloadUpdates) { copy(autoDownloadUpdates = it) },
+        plain(AUTO_UPDATE_WIFI_ONLY, Settings::autoUpdateWifiOnly) { copy(autoUpdateWifiOnly = it) },
+        plain(AUTO_HOT_UPDATE, Settings::autoHotUpdate) { copy(autoHotUpdate = it) },
 
         // 模型选择
         json(FAVORITE_MODELS, Settings::favoriteModels) { copy(favoriteModels = it) },

@@ -77,6 +77,7 @@ import com.gcmodai.app.data.user.UserRepository
 import com.gcmodai.app.data.user.formatQuotaUsd
 import com.gcmodai.app.ui.components.nav.BackButton
 import com.gcmodai.app.ui.components.ui.CardGroup
+import com.gcmodai.app.ui.components.ui.switchItem
 import com.gcmodai.app.ui.components.ui.CardGroupValue
 import com.gcmodai.app.ui.components.ui.CardGroupIcon
 import com.gcmodai.app.ui.components.ui.ConnectedChoiceButtons
@@ -288,6 +289,39 @@ fun SettingPage(vm: SettingVM = koinViewModel()) {
                         leadingContent = { CardGroupIcon(HugeIcons.McpServer, containerColor = containerColor, contentColor = contentColor) },
                         supportingContent = { Text(stringResource(R.string.setting_page_mcp_desc)) },
                         headlineContent = { Text(stringResource(R.string.setting_page_mcp)) },
+                    )
+                }
+            }
+
+            item("autoUpdate") {
+                val containerColor = MaterialTheme.colorScheme.primaryContainer
+                val contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                CardGroup(
+                    title = { Text("自动更新") },
+                ) {
+                    switchItem(
+                        checked = settings.autoCheckUpdates,
+                        onCheckedChange = { checked -> vm.updateSettings { s -> s.copy(autoCheckUpdates = checked) } },
+                        headlineContent = { Text("自动检查更新") },
+                        supportingContent = { Text("启动后静默检查，每 6 小时最多一次") },
+                    )
+                    switchItem(
+                        checked = settings.autoDownloadUpdates,
+                        onCheckedChange = { checked -> vm.updateSettings { s -> s.copy(autoDownloadUpdates = checked) } },
+                        headlineContent = { Text("自动下载新版本") },
+                        supportingContent = { Text("后台下好并通知你点一下安装，不用自己去下载") },
+                    )
+                    switchItem(
+                        checked = settings.autoUpdateWifiOnly,
+                        onCheckedChange = { checked -> vm.updateSettings { s -> s.copy(autoUpdateWifiOnly = checked) } },
+                        headlineContent = { Text("仅在 Wi-Fi 下下载") },
+                        supportingContent = { Text("关掉后蜂窝网络也会下载，注意流量") },
+                    )
+                    switchItem(
+                        checked = settings.autoHotUpdate,
+                        onCheckedChange = { checked -> vm.updateSettings { s -> s.copy(autoHotUpdate = checked) } },
+                        headlineContent = { Text("自动应用热更新") },
+                        supportingContent = { Text("界面/配置类更新直接生效，不需要安装新 APK") },
                     )
                 }
             }
