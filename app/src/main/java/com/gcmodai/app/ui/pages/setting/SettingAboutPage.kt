@@ -42,6 +42,7 @@ import androidx.compose.ui.unit.center
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.toOffset
 import me.rerere.hugeicons.HugeIcons
+import me.rerere.hugeicons.stroke.Refresh
 import me.rerere.hugeicons.stroke.Download01
 import me.rerere.hugeicons.stroke.Code
 import me.rerere.hugeicons.stroke.Earth
@@ -68,6 +69,7 @@ import com.gcmodai.ui.easteregg.EmojiBurstHost
 fun SettingAboutPage() {
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
     val context = LocalContext.current
+    val hotUpdateManager: com.gcmodai.app.utils.HotUpdateManager = org.koin.compose.koinInject()
     val navController = LocalNavController.current
     val soundOptions = remember { listOf(R.raw.bingbingbing, R.raw.gangguan) }
     val soundEffectPlayer = remember(context) { SoundEffectPlayer(context) }
@@ -189,6 +191,32 @@ fun SettingAboutPage() {
                                 Text("${BuildConfig.VERSION_NAME} / ${BuildConfig.VERSION_CODE}")
                             },
                             headlineContent = { Text(stringResource(R.string.about_page_version)) },
+                        )
+                        // 热更新状态：能直观看到界面是「云端包」还是「内置」
+                        item(
+                            leadingContent = {
+                                CardGroupIcon(
+                                    HugeIcons.Refresh,
+                                    containerColor = containerColor,
+                                    contentColor = contentColor,
+                                )
+                            },
+                            supportingContent = {
+                                val hotVersion = com.gcmodai.app.utils.HotUiPaths.activeVersion(context)
+                                Text(
+                                    if (hotVersion != null) {
+                                        "界面来自云端热更新包：$hotVersion"
+                                    } else {
+                                        "使用 APK 内置界面（设置 → 自动更新 可开启云更新）"
+                                    }
+                                )
+                            },
+                            headlineContent = { Text("热更新") },
+                            trailingContent = {
+                                androidx.compose.material3.TextButton(
+                                    onClick = { hotUpdateManager.checkAndApply(autoApply = true) }
+                                ) { Text("检查") }
+                            },
                         )
                         item(
                             leadingContent = { CardGroupIcon(HugeIcons.SmartPhone01, containerColor = containerColor, contentColor = contentColor) },

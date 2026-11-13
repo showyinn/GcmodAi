@@ -123,6 +123,11 @@ class SettingsStore internal constructor(
         val DEVELOPER_MODE = booleanPreferencesKey("developer_mode")
         // ffmpeg 工具一次性迁移（老用户升级后自动补上）
         val FFMPEG_TOOL_MIGRATED = booleanPreferencesKey("ffmpeg_tool_migrated")
+        // 自动更新 / 热更新
+        val AUTO_CHECK_UPDATES = booleanPreferencesKey("auto_check_updates")
+        val AUTO_DOWNLOAD_UPDATES = booleanPreferencesKey("auto_download_updates")
+        val AUTO_UPDATE_WIFI_ONLY = booleanPreferencesKey("auto_update_wifi_only")
+        val AUTO_HOT_UPDATE = booleanPreferencesKey("auto_hot_update")
 
         // 模型选择
         val FAVORITE_MODELS = stringPreferencesKey("favorite_models")

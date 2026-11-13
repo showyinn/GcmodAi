@@ -18,6 +18,8 @@ import com.gcmodai.app.utils.EmojiData
 import com.gcmodai.app.utils.EmojiUtils
 import com.gcmodai.app.utils.JsonInstant
 import com.gcmodai.app.utils.SoundEffectPlayer
+import com.gcmodai.app.utils.AutoUpdateScheduler
+import com.gcmodai.app.utils.HotUpdateManager
 import com.gcmodai.app.utils.UpdateChecker
 import com.gcmodai.app.data.user.UserApi
 import com.gcmodai.app.data.remote.RemoteConfigRepository
@@ -56,6 +58,23 @@ val appModule = module {
             sshRepository = get<com.gcmodai.app.data.repository.WorkspaceRepository>(),
             pcAgentRepository = get<com.gcmodai.app.data.agent.PcAgentRepository>(),
             mediaProbeClient = get(),
+        )
+    }
+
+    single {
+        HotUpdateManager(
+            context = get(),
+            client = get(),
+            appScope = get(),
+        )
+    }
+
+    single {
+        AutoUpdateScheduler(
+            context = get(),
+            updateChecker = get(),
+            hotUpdateManager = get(),
+            appScope = get(),
         )
     }
 

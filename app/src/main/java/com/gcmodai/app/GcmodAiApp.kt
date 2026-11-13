@@ -20,6 +20,7 @@ import androidx.lifecycle.ProcessLifecycleOwner
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
@@ -112,6 +113,16 @@ class GcmodAiApp : Application() {
         updateModelsDev()
 
         // Start WebServer if enabled in settings
+        // 自动更新：启动后静默检查，有新版本就后台下好并通知安装；
+        // 热更新（界面/配置）不需要安装，直接静默生效
+        runCatching {
+            val scheduler = org.koin.core.context.GlobalContext.get()
+                .get<com.gcmodai.app.utils.AutoUpdateScheduler>()
+            val settingsStore = org.koin.core.context.GlobalContext.get()
+                .get<com.gcmodai.app.data.datastore.SettingsStore>()
+            scheduler.runIfDue { settingsStore.settingsFlow.first() }
+        }.onFailure { android.util.Log.w(TAG, "auto update check failed", it) }
+
         startWebServerIfEnabled()
 
         // Resume media generations interrupted by the last process death

@@ -76,7 +76,10 @@ class WebServerManager(
                     _state.value = baseState.copy(error = "Port $port is already in use")
                     return@launch
                 }
-                server = startWebServer(port = port, host = host) {
+                // 热更新优先：有 hotui 目录就从那儿出静态资源，否则回落到 APK 内置资源
+                val hotUiDir = com.gcmodai.app.utils.HotUiPaths.activeDir(context)
+                Log.i(TAG, "web ui source: " + (hotUiDir?.absolutePath ?: "builtin"))
+                server = startWebServer(port = port, host = host, hotUiDir = hotUiDir) {
                     configureWebApi(context, chatService, conversationRepo, folderRepo, settingsStore, filesManager)
                 }.start(wait = false)
 
