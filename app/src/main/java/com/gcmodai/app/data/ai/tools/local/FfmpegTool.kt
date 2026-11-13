@@ -27,7 +27,7 @@ const val FFMPEG_TOOL_NAME = "ffmpeg"
 private const val MAX_FRAMES = 6
 
 /** 送去做解析的体积上限（手机内存有限，超大文件先提示用户） */
-private const val MAX_FILE_BYTES = 256L * 1024 * 1024
+private const val MAX_FILE_BYTES = 192L * 1024 * 1024
 
 /**
  * ffmpeg 工具：让 AI 直接"看懂"用户设备上的视频和音频。
@@ -140,7 +140,8 @@ internal fun buildFfmpegTool(
         if (file.length() > MAX_FILE_BYTES) {
             return@Tool listOf(
                 UIMessagePart.Text(
-                    """{"error":"file too large","sizeBytes":${file.length()},"limitBytes":$MAX_FILE_BYTES}"""
+                    """{"error":"file too large","sizeBytes":${file.length()},"limitBytes":$MAX_FILE_BYTES,""" +
+                        """"hint":"先用 action=convert 配 target_mb（例如 32）压小，再分析"}"""
                 )
             )
         }

@@ -140,6 +140,23 @@ fun HardenPage() {
     var selectedDex by remember { mutableStateOf<Set<String>>(emptySet()) }
 
     // 只渲染前 60 行；勾选变化不会重建整个列表
+    // 进页面就拉一次任务列表：以前必须手动点「刷新」，关掉页面再进来会以为历史丢了
+    var jobsAutoLoaded by remember { mutableStateOf(false) }
+    androidx.compose.runtime.LaunchedEffect(Unit) {
+        if (!jobsAutoLoaded) {
+            jobsAutoLoaded = true
+            jobsLoading = true
+            client.listJobs(30).onSuccess { jobs = it }
+            jobsLoading = false
+        }
+    }
+    // 当前任务跑完也自动刷新一次，列表里立刻能看到「已完成」
+    androidx.compose.runtime.LaunchedEffect(busy) {
+        if (!busy && jobId != null) {
+            client.listJobs(30).onSuccess { jobs = it }
+        }
+    }
+
     val visibleClasses by remember(classes, showAllClasses) {
         derivedStateOf { if (showAllClasses) classes else classes.take(60) }
     }
