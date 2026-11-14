@@ -13,7 +13,7 @@ AI 不只会给你一段代码，它会**把文件写进真实的工作区**，�
   <img alt="android" src="https://img.shields.io/badge/Android-8.0%2B-3DDC84">
   <img alt="kotlin" src="https://img.shields.io/badge/Kotlin-Compose-7F52FF">
   <img alt="license" src="https://img.shields.io/badge/License-AGPL--3.0-blue">
-  <img alt="version" src="https://img.shields.io/badge/Version-3.9.35-orange">
+  <img alt="version" src="https://img.shields.io/badge/Version-3.9.36-orange">
 </p>
 
 ---
@@ -481,6 +481,7 @@ netsh advfirewall firewall add rule name="GcmodAi Agent" dir=in action=allow pro
 
 | 版本 | 主要内容 |
 |---|---|
+| 3.9.36 | 任务模式拆成「默认只处理断流/截断/步数耗尽」与「严格模式按完成标记续写」两档，避免普通聊天被过度续写 |
 | 3.9.35 | 任务模式（断流/截断/未完成自动续写，可调轮数与完成标记）；全应用热更新（web + 技能 + 配置）；官网下载页改为运行时读 `/updates.json` |
 | 3.9.34 | 云端热更新（HotUI）+ 自动更新（静默下载 / 通知安装）+ 设置开关 |
 | 3.9.33 | 媒体/加固边界审计修复；加固任务列表自动刷新 |
