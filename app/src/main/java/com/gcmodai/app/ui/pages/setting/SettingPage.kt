@@ -49,6 +49,7 @@ import me.rerere.hugeicons.stroke.UserCircle
 import me.rerere.hugeicons.stroke.AiMagic
 import me.rerere.hugeicons.stroke.Alert01
 import me.rerere.hugeicons.stroke.Book01
+import me.rerere.hugeicons.stroke.Book02
 import me.rerere.hugeicons.stroke.BatteryCharging02
 import me.rerere.hugeicons.stroke.Book03
 import me.rerere.hugeicons.stroke.Bookshelf01
@@ -421,6 +422,13 @@ fun SettingPage(vm: SettingVM = koinViewModel()) {
                         leadingContent = { CardGroupIcon(HugeIcons.Clapping01, containerColor = containerColor, contentColor = contentColor) },
                         supportingContent = { Text(stringResource(R.string.setting_page_about_desc)) },
                         headlineContent = { Text(stringResource(R.string.setting_page_about)) },
+                    )
+                    // 站内教程：内容跟着热更新走，不依赖网页是否可达
+                    item(
+                        onClick = { navController.navigate(Screen.Tutorial) },
+                        leadingContent = { CardGroupIcon(HugeIcons.Book02, containerColor = containerColor, contentColor = contentColor) },
+                        supportingContent = { Text(stringResource(R.string.tutorial_entry_desc)) },
+                        headlineContent = { Text(stringResource(R.string.tutorial_entry)) },
                     )
                     item(
                         onClick = {

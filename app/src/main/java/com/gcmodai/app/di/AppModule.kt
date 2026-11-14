@@ -69,6 +69,15 @@ val appModule = module {
         )
     }
 
+    // 教程内容：读热更新包里的 tutorial.json，没有就用 APK 内置那份
+    single {
+        com.gcmodai.app.data.tutorial.TutorialRepository(context = get())
+    }
+
+    single {
+        com.gcmodai.app.ui.pages.tutorial.TutorialVM(repository = get())
+    }
+
     single {
         AutoUpdateScheduler(
             context = get(),

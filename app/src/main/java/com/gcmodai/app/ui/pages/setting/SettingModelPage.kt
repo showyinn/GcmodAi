@@ -13,7 +13,6 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.LargeFlexibleTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -52,12 +51,10 @@ import com.gcmodai.app.ui.components.nav.BackButton
 import com.gcmodai.app.ui.components.ui.CardGroup
 import com.gcmodai.app.ui.components.ui.CardGroupIcon
 import com.gcmodai.app.ui.components.ui.CardGroupScope
-import com.gcmodai.app.ui.components.ui.CardGroupValue
 import com.gcmodai.app.ui.components.ui.PagerTab
 import com.gcmodai.app.ui.components.ui.PagerTabs
 import com.gcmodai.app.ui.components.ui.switchItem
 import com.gcmodai.app.ui.theme.CustomColors
-import kotlin.math.roundToInt
 import kotlin.uuid.Uuid
 import org.koin.androidx.compose.koinViewModel
 
@@ -282,6 +279,8 @@ private fun ModelSettingsPage(settings: Settings, vm: SettingVM, contentPadding:
                 )
             }
         }
+        // 任务模式：日常开关已经搬到聊天页的 + 号面板（那里才是用户发现「停了一半」的地方）。
+        // 设置页这里只留一行状态 + 一个总开关，避免同一个开关出现在两处、让人以为是两份配置。
         item {
             val containerColor = MaterialTheme.colorScheme.secondaryContainer
             val contentColor = MaterialTheme.colorScheme.onSecondaryContainer
@@ -296,37 +295,26 @@ private fun ModelSettingsPage(settings: Settings, vm: SettingVM, contentPadding:
                             contentColor = contentColor,
                         )
                     },
-                    supportingContent = { Text(stringResource(R.string.setting_model_page_task_mode_desc)) },
+                    supportingContent = {
+                        Text(
+                            when {
+                                !settings.taskModeEnabled ->
+                                    stringResource(R.string.task_mode_status_off)
+
+                                settings.taskModeStrict -> stringResource(
+                                    R.string.task_mode_status_strict,
+                                    settings.taskModeMaxContinuations,
+                                )
+
+                                else -> stringResource(
+                                    R.string.task_mode_status_on,
+                                    settings.taskModeMaxContinuations,
+                                )
+                            }
+                        )
+                    },
                     headlineContent = { Text(stringResource(R.string.setting_model_page_task_mode_enable)) },
                 )
-                // 次数和完成标记只在开启时才有意义
-                if (settings.taskModeEnabled) {
-                    switchItem(
-                        checked = settings.taskModeStrict,
-                        onCheckedChange = { vm.updateSettings { latest -> latest.copy(taskModeStrict = it) } },
-                        supportingContent = {
-                            Text(stringResource(R.string.setting_model_page_task_mode_strict_desc))
-                        },
-                        headlineContent = { Text(stringResource(R.string.setting_model_page_task_mode_strict)) },
-                    )
-                    formItem(
-                        headlineContent = { Text(stringResource(R.string.setting_model_page_task_mode_rounds)) },
-                        supportingContent = { Text(stringResource(R.string.setting_model_page_task_mode_rounds_desc)) },
-                        trailingContent = { CardGroupValue(settings.taskModeMaxContinuations.toString()) },
-                    ) {
-                        Slider(
-                            value = settings.taskModeMaxContinuations.toFloat(),
-                            onValueChange = { value ->
-                                vm.updateSettings { latest ->
-                                    latest.copy(taskModeMaxContinuations = value.roundToInt())
-                                }
-                            },
-                            // 0 就是关掉续写，和上面的开关不是一回事，所以从 1 起
-                            valueRange = 1f..20f,
-                            steps = 18,
-                        )
-                    }
-                }
             }
         }
         item {

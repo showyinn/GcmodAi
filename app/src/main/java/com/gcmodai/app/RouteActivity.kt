@@ -138,6 +138,7 @@ import com.gcmodai.app.ui.pages.account.TopupPage
 import com.gcmodai.app.ui.pages.onboarding.IpProbe
 import com.gcmodai.app.ui.pages.onboarding.OnboardingGate
 import com.gcmodai.app.ui.pages.onboarding.OnboardingPage
+import com.gcmodai.app.ui.pages.tutorial.TutorialPage
 import com.gcmodai.app.ui.pages.setting.SettingAboutPage
 import com.gcmodai.app.ui.pages.setting.SettingPreferencesPage
 import com.gcmodai.app.ui.pages.setting.SettingPreferencesThemePage
@@ -652,6 +653,10 @@ class RouteActivity : ComponentActivity() {
                                 OnboardingPage()
                             }
 
+                            entry<Screen.Tutorial> {
+                                TutorialPage(koinInject())
+                            }
+
                             entry<Screen.Login> {
                                 LoginPage()
                             }
@@ -922,6 +927,10 @@ sealed interface Screen : NavKey {
      */
     @Serializable
     data object Onboarding : Screen
+
+    /** 完整使用教程：内容来自可热更新的 tutorial.json */
+    @Serializable
+    data object Tutorial : Screen
 
     /** 登录 */
     @Serializable
