@@ -246,13 +246,13 @@ fun SettingAboutPage() {
                             headlineContent = { Text("源码镜像下载") },
                         )
                         item(
-                            onClick = { context.openUrl("https://github.com/tmmichaelwonghbhm/GcmodAi") },
+                            onClick = { context.openUrl("https://github.com/showyinn/GcmodAi") },
                             leadingContent = { CardGroupIcon(HugeIcons.Github, containerColor = containerColor, contentColor = contentColor) },
-                            supportingContent = { Text("github.com/tmmichaelwonghbhm/GcmodAi") },
+                            supportingContent = { Text("github.com/showyinn/GcmodAi") },
                             headlineContent = { Text(stringResource(R.string.about_page_github)) },
                         )
                         item(
-                            onClick = { context.openUrl("https://github.com/tmmichaelwonghbhm/GcmodAi/blob/main/LICENSE") },
+                            onClick = { context.openUrl("https://github.com/showyinn/GcmodAi/blob/main/LICENSE") },
                             leadingContent = { CardGroupIcon(HugeIcons.File02, containerColor = containerColor, contentColor = contentColor) },
                             supportingContent = { Text("AGPL-3.0 全文（镜像直链也可）") },
                             headlineContent = { Text(stringResource(R.string.about_page_license)) },

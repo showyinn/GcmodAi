@@ -1,6 +1,6 @@
 # GcmodAi
 
-> **仓库：https://github.com/tmmichaelwonghbhm/GcmodAi** ｜ **官网：https://gcmod.online/** ｜ **下载：https://gcmod.bond/**
+> **仓库：https://github.com/showyinn/GcmodAi** ｜ **官网：https://gcmod.online/** ｜ **下载：https://gcmod.bond/**
 > 源码镜像（含源码快照 / LICENSE / Windows 助手）：https://gcmod.bond/opensource/
 
 一个把「AI 写代码」做成闭环的 Android 客户端：
@@ -13,7 +13,7 @@ AI 不只会给你一段代码，它会**把文件写进真实的工作区**，�
   <img alt="android" src="https://img.shields.io/badge/Android-8.0%2B-3DDC84">
   <img alt="kotlin" src="https://img.shields.io/badge/Kotlin-Compose-7F52FF">
   <img alt="license" src="https://img.shields.io/badge/License-AGPL--3.0-blue">
-  <img alt="version" src="https://img.shields.io/badge/Version-3.9.6-orange">
+  <img alt="version" src="https://img.shields.io/badge/Version-3.9.35-orange">
 </p>
 
 ---
@@ -481,6 +481,12 @@ netsh advfirewall firewall add rule name="GcmodAi Agent" dir=in action=allow pro
 
 | 版本 | 主要内容 |
 |---|---|
+| 3.9.35 | 任务模式（断流/截断/未完成自动续写，可调轮数与完成标记）；全应用热更新（web + 技能 + 配置）；官网下载页改为运行时读 `/updates.json` |
+| 3.9.34 | 云端热更新（HotUI）+ 自动更新（静默下载 / 通知安装）+ 设置开关 |
+| 3.9.33 | 媒体/加固边界审计修复；加固任务列表自动刷新 |
+| 3.9.32 | ffmpeg `convert` 转码压缩；加固任务列表；字符串加密（StringFog） |
+| 3.9.31 | ffmpeg 工具新增 `thumbnail` / `trim` |
+| 3.9.30 | 删除音视频工具页，改为 AI 可调用的 `ffmpeg` 工具 |
 | 3.9.6 | 源码仓库迁移到新账号；关于页 GitHub / LICENSE 链接同步；版本 3.9.6 (241) |
 | 3.9.5 | 关于页源码入口重排：镜像置顶、LICENSE 走公开直链 |
 | 3.9.4 | App 关于页改指新仓库；新增源码镜像入口 |
