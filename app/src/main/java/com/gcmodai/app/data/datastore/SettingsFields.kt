@@ -95,6 +95,13 @@ internal val SETTINGS_FIELDS: List<SettingsField<*, *>> = with(SettingsStore) {
         plain(AUTO_DOWNLOAD_UPDATES, Settings::autoDownloadUpdates) { copy(autoDownloadUpdates = it) },
         plain(AUTO_UPDATE_WIFI_ONLY, Settings::autoUpdateWifiOnly) { copy(autoUpdateWifiOnly = it) },
         plain(AUTO_HOT_UPDATE, Settings::autoHotUpdate) { copy(autoHotUpdate = it) },
+        // 任务模式 / 断流保护
+        plain(TASK_MODE_ENABLED, Settings::taskModeEnabled) { copy(taskModeEnabled = it) },
+        plain(TASK_MODE_MAX_CONTINUATIONS, Settings::taskModeMaxContinuations) {
+            copy(taskModeMaxContinuations = it)
+        },
+        plain(TASK_MODE_DONE_MARKER, Settings::taskModeDoneMarker) { copy(taskModeDoneMarker = it) },
+        plain(TASK_MODE_NUDGE, Settings::taskModeNudge) { copy(taskModeNudge = it) },
 
         // 模型选择
         json(FAVORITE_MODELS, Settings::favoriteModels) { copy(favoriteModels = it) },

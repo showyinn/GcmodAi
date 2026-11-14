@@ -129,6 +129,12 @@ class SettingsStore internal constructor(
         val AUTO_UPDATE_WIFI_ONLY = booleanPreferencesKey("auto_update_wifi_only")
         val AUTO_HOT_UPDATE = booleanPreferencesKey("auto_hot_update")
 
+        // 任务模式 / 断流保护：模型没干完就自动续写，不让一轮对话停在半路
+        val TASK_MODE_ENABLED = booleanPreferencesKey("task_mode_enabled")
+        val TASK_MODE_MAX_CONTINUATIONS = intPreferencesKey("task_mode_max_continuations")
+        val TASK_MODE_DONE_MARKER = stringPreferencesKey("task_mode_done_marker")
+        val TASK_MODE_NUDGE = stringPreferencesKey("task_mode_nudge")
+
         // 模型选择
         val FAVORITE_MODELS = stringPreferencesKey("favorite_models")
         val SELECT_MODEL = stringPreferencesKey("chat_model")

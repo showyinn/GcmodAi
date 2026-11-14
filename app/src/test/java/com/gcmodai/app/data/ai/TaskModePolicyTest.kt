@@ -1,0 +1,66 @@
+package com.gcmodai.app.data.ai
+
+import com.gcmodai.ai.agent.ContinuationPolicy
+import com.gcmodai.ai.agent.ContinuationTrigger
+import com.gcmodai.app.data.datastore.Settings
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
+import org.junit.Test
+
+// 设置里的任务模式开关 → agent 循环用的续写策略，只做映射，不做别的判断
+class TaskModePolicyTest {
+    @Test
+    fun `switching task mode off disables continuation entirely`() {
+        val policy = Settings(taskModeEnabled = false, taskModeMaxContinuations = 8).continuationPolicy()
+
+        assertEquals(ContinuationPolicy.NONE, policy)
+        assertFalse(policy.enabled)
+    }
+
+    @Test
+    fun `enabled task mode watches every trigger by default`() {
+        val policy = Settings(taskModeEnabled = true, taskModeMaxContinuations = 5).continuationPolicy()
+
+        assertTrue(policy.enabled)
+        assertEquals(5, policy.maxContinuations)
+        assertEquals(ContinuationPolicy.DEFAULT_TRIGGERS, policy.triggers)
+    }
+
+    @Test
+    fun `a custom marker is kept next to the built-in ones`() {
+        val policy = Settings(taskModeDoneMarker = "@@END@@").continuationPolicy()
+
+        assertTrue("@@END@@" in policy.doneMarkers)
+        assertTrue("[DONE]" in policy.doneMarkers)
+    }
+
+    @Test
+    fun `an empty marker falls back to the built-in markers`() {
+        val policy = Settings(taskModeDoneMarker = "   ").continuationPolicy()
+
+        assertEquals(ContinuationPolicy.DEFAULT_DONE_MARKERS, policy.doneMarkers)
+    }
+
+    @Test
+    fun `an empty nudge falls back to the built-in text`() {
+        val policy = Settings(taskModeNudge = "").continuationPolicy()
+
+        assertEquals(ContinuationPolicy.DEFAULT_NUDGE, policy.nudge)
+    }
+
+    @Test
+    fun `a custom nudge is used as written`() {
+        val policy = Settings(taskModeNudge = " 接着写 ").continuationPolicy()
+
+        assertEquals("接着写", policy.nudge)
+    }
+
+    @Test
+    fun `zero rounds still counts as switched off`() {
+        val policy = Settings(taskModeEnabled = true, taskModeMaxContinuations = 0).continuationPolicy()
+
+        assertFalse(policy.enabled)
+        assertTrue(ContinuationTrigger.EMPTY in policy.triggers)
+    }
+}

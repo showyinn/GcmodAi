@@ -78,6 +78,14 @@ data class RemoteConfig(
 
 class RemoteConfigRepository(
     private val client: OkHttpClient,
+    /**
+     * 热更新包里的配置覆盖（HotUpdateManager.configOverride）。
+     *
+     * 为什么需要这一层：远端接口偶发不可用（改版、迁移、被墙）时，
+     * 用户手机里上一次热更新下来的 config.json 还能顶上，
+     * 至少不会退回到「群号空了、公告没了」的出厂默认值。
+     */
+    private val hotConfigOverride: (() -> Map<String, String>?)? = null,
 ) {
     private val json = Json {
         ignoreUnknownKeys = true
@@ -121,7 +129,17 @@ class RemoteConfigRepository(
             }
         }.getOrNull()
 
-        val data = result ?: return@withContext false
+        val data = result
+        if (data == null) {
+            // 远端拿不到：退到热更新包里的 config.json（键名与 /api/config/public 一致）
+            val hot = runCatching { hotConfigOverride?.invoke() }.getOrNull()
+            if (!hot.isNullOrEmpty()) {
+                val obj = JsonObject(hot.mapValues { JsonPrimitive(it.value) })
+                _config.value = _config.value.mergeFrom(obj).copy(loaded = false)
+                return@withContext true
+            }
+            return@withContext false
+        }
         _config.value = _config.value.mergeFrom(data).copy(loaded = true)
         true
     }

@@ -84,4 +84,12 @@ class SettingsNormalizationTest {
         assertTrue("OpenAI 必须保留", settings.providers.any { it.name == "OpenAI" })
         assertFalse("MIMO 已下线", "MIMO" in settings.providers.map { it.name })
     }
+
+    // 续写次数是手滑就能填错的数字：填成负数会让续写直接失效，填成天量会把额度烧光
+    @Test
+    fun `task mode continuation rounds are clamped`() {
+        assertEquals(0, Settings(taskModeMaxContinuations = -3).normalized().taskModeMaxContinuations)
+        assertEquals(50, Settings(taskModeMaxContinuations = 999).normalized().taskModeMaxContinuations)
+        assertEquals(8, Settings(taskModeMaxContinuations = 8).normalized().taskModeMaxContinuations)
+    }
 }

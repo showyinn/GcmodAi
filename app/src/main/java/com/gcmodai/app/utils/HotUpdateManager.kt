@@ -13,6 +13,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.contentOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.File
@@ -44,8 +45,12 @@ class HotUpdateManager(
         private const val PREF = "hotui"
         private const val KEY_VERSION = "version"
         private const val KEY_APPLIED_AT = "applied_at"
+        private const val KEY_PARTS = "parts"
         private const val DIR_ROOT = "hotui"
+        /** 技能热更新的落点：用户技能目录，天然优先于内置技能 */
+        private const val SKILLS_DIR = "SKILLS"
         private const val MAX_ZIP_BYTES = 32L * 1024 * 1024
+        private const val CONFIG_FILE = "config.json"
     }
 
     @Serializable
@@ -57,6 +62,8 @@ class HotUpdateManager(
         val sizeBytes: Long = 0,
         val note: String = "",
         val publishedAt: String = "",
+        /** 这个包包含哪些内容：web / skills / config，空表示按 web 处理（兼容旧包） */
+        val contains: List<String> = emptyList(),
     )
 
     sealed interface State {
@@ -64,7 +71,11 @@ class HotUpdateManager(
         data object Checking : State
         data class UpToDate(val version: String) : State
         data class Downloading(val progress: Int) : State
-        data class Applied(val version: String) : State
+        data class Applied(
+            val version: String,
+            /** 这次实际更新了哪些部分（web/skills/config） */
+            val parts: List<String> = emptyList(),
+        ) : State
         data class Failed(val message: String) : State
     }
 
@@ -82,6 +93,30 @@ class HotUpdateManager(
     }
 
     fun activeVersion(): String = prefs.getString(KEY_VERSION, null) ?: "内置版本"
+
+    /** 当前热更新包包含哪些部分（web/skills/config） */
+    fun activeParts(): List<String> =
+        prefs.getString(KEY_PARTS, null)?.split(",")?.filter { it.isNotBlank() } ?: emptyList()
+
+    /**
+     * 热更新包里的配置覆盖（config.json）。
+     *
+     * 读取优先级：远端 /api/config/public > 热更新包 config.json > 内置默认值。
+     * 返回 null 表示包里没带配置。
+     */
+    fun configOverride(): Map<String, String>? {
+        val version = prefs.getString(KEY_VERSION, null) ?: return null
+        val file = File(File(rootDir(), version), CONFIG_FILE)
+        if (!file.isFile) return null
+        return runCatching {
+            val text = file.readText()
+            val obj = json.parseToJsonElement(text) as? kotlinx.serialization.json.JsonObject
+                ?: return null
+            obj.mapNotNull { (k, v) ->
+                (v as? kotlinx.serialization.json.JsonPrimitive)?.contentOrNull?.let { k to it }
+            }.toMap()
+        }.getOrNull()
+    }
 
     private fun rootDir() = File(context.filesDir, DIR_ROOT)
 
@@ -147,16 +182,19 @@ class HotUpdateManager(
             return
         }
 
-        val ok = withContext(Dispatchers.IO) { runCatching { unpack(bytes, manifest.version) }.isSuccess }
-        if (ok) {
+        val parts = withContext(Dispatchers.IO) {
+            runCatching { unpack(bytes, manifest.version) }.getOrNull()
+        }
+        if (parts != null && parts.isNotEmpty()) {
             prefs.edit()
                 .putString(KEY_VERSION, manifest.version)
                 .putLong(KEY_APPLIED_AT, System.currentTimeMillis())
+                .putString(KEY_PARTS, parts.joinToString(","))
                 .apply()
-            _state.value = State.Applied(manifest.version)
-            Log.i(TAG, "hot update applied: ${manifest.version}")
+            _state.value = State.Applied(manifest.version, parts)
+            Log.i(TAG, "hot update applied: ${manifest.version} parts=$parts")
         } else {
-            _state.value = State.Failed("解压失败")
+            _state.value = State.Failed("解压失败或包内无可更新内容")
         }
     }
 
@@ -188,42 +226,122 @@ class HotUpdateManager(
     }
 
     /**
-     * 解压到 hotui/<version>，逐条校验路径。
+     * 解压并应用热更新包。
      *
-     * 防 Zip Slip：任何解析后落到目标目录之外的条目都直接抛错，整包作废。
+     * 按 zip 内的顶层目录分三路：
+     *  · web/ 目录    → hotui/版本/ （内嵌 Web 服务器从这儿出静态文件）
+     *  · skills/ 目录 → filesDir/SKILLS/名字/（用户技能目录，优先于内置技能）
+     *  · config.json → hotui/版本/config.json（配置覆盖，供远端配置读取）
+     *
+     * 所有路径都要过 Zip Slip 校验；任何一条不合法就整包作废。
      */
-    private fun unpack(bytes: ByteArray, version: String) {
-        val target = File(rootDir(), version)
-        val tmp = File(rootDir(), "$version.tmp")
-        tmp.deleteRecursively()
-        tmp.mkdirs()
-        val canonicalTmp = tmp.canonicalFile
+    private fun unpack(bytes: ByteArray, version: String): List<String> {
+        val webTarget = File(rootDir(), version)
+        val webTmp = File(rootDir(), "$version.tmp")
+        webTmp.deleteRecursively()
+        webTmp.mkdirs()
+        val canonicalWebTmp = webTmp.canonicalFile
+
+        val skillsRoot = File(File(context.filesDir, SKILLS_DIR), ".hot-$version")
+        skillsRoot.deleteRecursively()
+        skillsRoot.mkdirs()
+        val canonicalSkills = skillsRoot.canonicalFile
+
+        val parts = linkedSetOf<String>()
+        val pendingSkills = mutableListOf<Pair<File, File>>()   // (tmp, final)
+        var configBytes: ByteArray? = null
 
         ZipInputStream(bytes.inputStream()).use { zin ->
             var entry = zin.nextEntry
             while (entry != null) {
-                val name = entry.name.replace('\\', '/')
+                var name = entry.name.replace('\\', '/')
+                if (name.startsWith("./")) name = name.substring(2)
                 if (name.contains("..")) error("非法路径：$name")
                 if (name.startsWith("/")) error("非法绝对路径：$name")
-                val out = File(tmp, name)
-                if (!out.canonicalPath.startsWith(canonicalTmp.path + File.separator) &&
-                    out.canonicalPath != canonicalTmp.path
-                ) {
-                    error("路径逃逸：$name")
-                }
-                if (entry.isDirectory) {
-                    out.mkdirs()
-                } else {
-                    out.parentFile?.mkdirs()
-                    out.outputStream().use { fos -> zin.copyTo(fos) }
+
+                when {
+                    // ---- 技能 ----
+                    name.startsWith("skills/") -> {
+                        val rel = name.removePrefix("skills/")
+                        if (rel.isNotBlank() && !entry.isDirectory) {
+                            val out = File(skillsRoot, rel)
+                            requireInside(out, canonicalSkills, name)
+                            out.parentFile?.mkdirs()
+                            // ZipInputStream 的读取位置就是当前条目，直接 readBytes 即可
+                            out.writeBytes(zin.readBytes())
+                            // 记住顶层技能名，稍后整体搬到 SKILLS/
+                            val top = rel.substringBefore('/')
+                            if (top.isNotBlank()) {
+                                pendingSkills.add(out to File(File(context.filesDir, SKILLS_DIR), top))
+                            }
+                            parts.add("skills")
+                        }
+                    }
+
+                    // ---- 配置 ----
+                    name == CONFIG_FILE || name == "config/config.json" -> {
+                        configBytes = zin.readBytes()
+                        parts.add("config")
+                    }
+
+                    // ---- Web 静态资源（含以前的根目录布局） ----
+                    else -> {
+                        val rel = name.removePrefix("web/")
+                        if (rel.isBlank()) { entry = zin.nextEntry; continue }
+                        val out = File(webTmp, rel)
+                        requireInside(out, canonicalWebTmp, name)
+                        if (entry.isDirectory) {
+                            out.mkdirs()
+                        } else {
+                            out.parentFile?.mkdirs()
+                            out.writeBytes(zin.readBytes())
+                            parts.add("web")
+                        }
+                    }
                 }
                 entry = zin.nextEntry
             }
         }
 
-        // 原子切换：删旧目录 -> 临时目录改名
-        target.deleteRecursively()
-        if (!tmp.renameTo(target)) error("目录切换失败")
+        // ---- web：原子切换 ----
+        if (parts.contains("web")) {
+            webTarget.deleteRecursively()
+            if (!webTmp.renameTo(webTarget)) error("Web 目录切换失败")
+        } else {
+            webTmp.deleteRecursively()
+        }
+
+        // ---- skills：逐个技能目录替换（同名覆盖，其余保留） ----
+        if (pendingSkills.isNotEmpty()) {
+            pendingSkills.forEach { (src, dst) ->
+                runCatching {
+                    dst.deleteRecursively()
+                    dst.parentFile?.mkdirs()
+                    src.copyRecursively(dst, overwrite = true)
+                }.onFailure { Log.w(TAG, "skill 落盘失败: ${dst.name}", it) }
+            }
+        }
+        skillsRoot.deleteRecursively()
+
+        // ---- config：存到热更新目录，供配置读取 ----
+        configBytes?.let { raw ->
+            val cfg = File(webTarget, CONFIG_FILE)
+            webTarget.mkdirs()
+            runCatching { cfg.writeBytes(raw) }
+                .onFailure { Log.w(TAG, "config.json 写入失败", it) }
+        }
+
+        if (parts.isEmpty()) error("热更新包里没有可用的内容")
+        return parts.toList()
+    }
+
+    /** Zip Slip 校验：解析后的真实路径必须落在目标根目录内。 */
+    private fun requireInside(target: File, root: File, entryName: String) {
+        val t = target.canonicalFile
+        val r = root.canonicalFile
+        if (t != r && !t.path.startsWith(r.path + File.separator)) {
+            error("路径逃逸：$entryName")
+        }
     }
 
     private fun sha256(bytes: ByteArray): String {

@@ -95,7 +95,12 @@ val appModule = module {
 
     // 远程配置：管理员在网页后台改的东西在这里落地（官方群、公告、功能开关）
     single {
-        RemoteConfigRepository(get())
+        val hotUpdate: com.gcmodai.app.utils.HotUpdateManager = get()
+        RemoteConfigRepository(
+            client = get(),
+            // 远端接口拿不到时，用热更新包里下发的 config.json 顶上
+            hotConfigOverride = { runCatching { hotUpdate.configOverride() }.getOrNull() },
+        )
     }
 
     // 代码产物托管：公网可访问，替代原来的手机本地 Web 服务器
