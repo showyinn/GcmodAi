@@ -6,6 +6,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import com.gcmodai.ai.agent.AgentHooks
 import com.gcmodai.ai.agent.AgentRequest
 import com.gcmodai.ai.agent.ContinuationPolicy
+import com.gcmodai.ai.agent.ContinuationTrigger
 import com.gcmodai.ai.agent.RetryPolicy
 import com.gcmodai.ai.agent.StepRequest
 import com.gcmodai.ai.agent.withRetry
@@ -327,7 +328,13 @@ internal fun Settings.continuationPolicy(): ContinuationPolicy {
     }
     return ContinuationPolicy(
         maxContinuations = taskModeMaxContinuations,
-        triggers = ContinuationPolicy.DEFAULT_TRIGGERS,
+        // 严格模式才盯「有没有完成标记」；否则只管客观上没说完的三种情况。
+        // 不加这个区分的话，普通闲聊也会被一直续写到模型写出标记，白烧额度
+        triggers = if (taskModeStrict) {
+            ContinuationPolicy.DEFAULT_TRIGGERS
+        } else {
+            ContinuationPolicy.DEFAULT_TRIGGERS - ContinuationTrigger.UNFINISHED
+        },
         doneMarkers = markers,
         nudge = taskModeNudge.trim().ifEmpty { ContinuationPolicy.DEFAULT_NUDGE },
         // 续写到上限还是空的：给一句兜底，别留下一个点不开的空气泡

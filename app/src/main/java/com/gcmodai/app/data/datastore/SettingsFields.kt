@@ -97,6 +97,7 @@ internal val SETTINGS_FIELDS: List<SettingsField<*, *>> = with(SettingsStore) {
         plain(AUTO_HOT_UPDATE, Settings::autoHotUpdate) { copy(autoHotUpdate = it) },
         // 任务模式 / 断流保护
         plain(TASK_MODE_ENABLED, Settings::taskModeEnabled) { copy(taskModeEnabled = it) },
+        plain(TASK_MODE_STRICT, Settings::taskModeStrict) { copy(taskModeStrict = it) },
         plain(TASK_MODE_MAX_CONTINUATIONS, Settings::taskModeMaxContinuations) {
             copy(taskModeMaxContinuations = it)
         },

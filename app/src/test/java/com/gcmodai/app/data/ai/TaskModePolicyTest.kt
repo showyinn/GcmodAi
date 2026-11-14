@@ -19,12 +19,43 @@ class TaskModePolicyTest {
     }
 
     @Test
-    fun `enabled task mode watches every trigger by default`() {
-        val policy = Settings(taskModeEnabled = true, taskModeMaxContinuations = 5).continuationPolicy()
+    fun `enabled task mode watches every trigger in strict mode`() {
+        val policy = Settings(
+            taskModeEnabled = true,
+            taskModeStrict = true,
+            taskModeMaxContinuations = 5,
+        ).continuationPolicy()
 
         assertTrue(policy.enabled)
         assertEquals(5, policy.maxContinuations)
         assertEquals(ContinuationPolicy.DEFAULT_TRIGGERS, policy.triggers)
+    }
+
+    // 默认不盯「有没有完成标记」：否则普通聊天也会被一直续写，白烧额度
+    @Test
+    fun `non-strict task mode only watches the objective failures`() {
+        val policy = Settings(
+            taskModeEnabled = true,
+            taskModeStrict = false,
+            taskModeMaxContinuations = 5,
+        ).continuationPolicy()
+
+        assertTrue(ContinuationTrigger.EMPTY in policy.triggers)
+        assertTrue(ContinuationTrigger.TRUNCATED in policy.triggers)
+        assertTrue(ContinuationTrigger.STEP_LIMIT in policy.triggers)
+        assertFalse(ContinuationTrigger.UNFINISHED in policy.triggers)
+    }
+
+    @Test
+    fun `strict task mode also waits for the done marker`() {
+        val policy = Settings(
+            taskModeEnabled = true,
+            taskModeStrict = true,
+            taskModeMaxContinuations = 5,
+        ).continuationPolicy()
+
+        assertTrue(ContinuationTrigger.UNFINISHED in policy.triggers)
+        assertTrue(ContinuationTrigger.EMPTY in policy.triggers)
     }
 
     @Test
