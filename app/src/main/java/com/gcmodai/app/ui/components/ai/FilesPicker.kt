@@ -103,6 +103,7 @@ private enum class FilesPickerPage {
     EXTENSIONS,
     SEARCH,
     SEARCH_PROVIDER,
+    TASK_MODE,
 }
 
 private val FilesPickerPage.parent: FilesPickerPage
@@ -124,6 +125,7 @@ internal fun FilesPicker(
     onUpdateWorkspaceCwd: (String?) -> Unit,
     onUpdateSearchMode: (SearchMode) -> Unit,
     onUpdateSearchService: (Int) -> Unit,
+    onUpdateSettings: ((Settings) -> Settings) -> Unit,
     showCompressDialog: Boolean,
     onShowCompressDialogChange: (Boolean) -> Unit,
     onDismiss: () -> Unit,
@@ -201,6 +203,12 @@ internal fun FilesPicker(
                 onBack = { page = FilesPickerPage.SEARCH },
             )
 
+            FilesPickerPage.TASK_MODE -> TaskModePickerPage(
+                settings = settings,
+                onUpdateSettings = onUpdateSettings,
+                onBack = { page = FilesPickerPage.MAIN },
+            )
+
             // 矮屏上放不下时可以滚动，避免底部的压缩对话等入口被挤出屏幕
             FilesPickerPage.MAIN -> Column(
                 modifier = Modifier
@@ -241,6 +249,15 @@ internal fun FilesPicker(
                             add(AttachmentAction(HugeIcons.Voice, R.string.chat_page_voice_title, start))
                         }
                     }
+                )
+
+                // 任务模式快捷条：这是它的主入口。
+                // 用户发现「模型停了一半」的时刻就在这个面板里，能当场开关比退回设置页翻菜单有用得多。
+                // 设置-模型页那份保留为同步读写的镜像，两边改的是同一个字段。
+                TaskModeQuickBar(
+                    settings = settings,
+                    onUpdateSettings = onUpdateSettings,
+                    onOpenDetail = { page = FilesPickerPage.TASK_MODE },
                 )
 
                 // 分段列表：各项按显示条件依次占位，首尾项才有大圆角
@@ -549,17 +566,20 @@ private class AttachmentAction(
  * 旧实现按 `(size+1)/2` 均分成两行，9 个入口会变成"上行 5 个 + 下行 4 个"，
  * 每行都用 weight(1f) 平分宽度 —— 于是上行更窄、下行更宽，视觉上参差不齐。
  *
- * 现在固定列数（5 列），格子宽高由容器宽度算出来，最后一行不足列数时用等宽透明占位补齐，
- * 这样 4 个入口是 4 个同尺寸格子、9 个入口是 9 个同尺寸格子，永远不会一大一小。
+ * 现在固定列数（4 列），格子宽高由容器宽度算出来，最后一行不足列数时用等宽透明占位补齐，
+ * 这样 4 个入口是 4 个同尺寸格子、8 个入口正好两行，永远不会一大一小，也不会留下空洞。
  */
 @Composable
 private fun AttachmentGrid(
     actions: List<AttachmentAction>,
     modifier: Modifier = Modifier,
 ) {
-    val columns = 5
-    val spacing = 8.dp
-    val tileHeight = 92.dp
+    // 4 列：8 个入口正好两行、末行不留空洞。
+    // 之前是 5 列，8 项排成 5+3，右下角一片空白，而且每格只有 48dp 宽，
+    // 中文标签（"上传文件""APK 加固"）被 autoSize 压到 10sp 才放得下。
+    val columns = 4
+    val spacing = 10.dp
+    val tileHeight = 96.dp
 
     BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
         // 用容器宽度精确算格子宽：宽度一致 → 高度再固定 → 所有格子完全同尺寸
@@ -608,26 +628,26 @@ private fun AttachmentTile(
         ) {
             Box(
                 modifier = Modifier
-                    .size(34.dp)
-                    .clip(RoundedCornerShape(12.dp))
+                    .size(38.dp)
+                    .clip(RoundedCornerShape(13.dp))
                     .background(MaterialTheme.colorScheme.secondaryContainer),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
                     imageVector = action.icon,
                     contentDescription = null,
-                    modifier = Modifier.size(20.dp),
+                    modifier = Modifier.size(22.dp),
                 )
             }
             Spacer(Modifier.height(8.dp))
             Text(
                 text = stringResource(action.label),
-                // 五列并排时较长译文放不下，交给 autoSize 统一缩字号，保证每格文字块高度一致
-                autoSize = TextAutoSize.StepBased(minFontSize = 10.sp, maxFontSize = 12.sp),
+                // 四列时每格有 ~78dp，中文标签正常字号放得下；仍留给 autoSize 兜底窄屏
+                autoSize = TextAutoSize.StepBased(minFontSize = 11.sp, maxFontSize = 13.sp),
                 maxLines = 1,
                 softWrap = false,
                 overflow = TextOverflow.Ellipsis,
-                style = MaterialTheme.typography.labelMedium,
+                style = MaterialTheme.typography.labelLarge,
             )
         }
     }

@@ -51,6 +51,8 @@ class HotUpdateManager(
         private const val SKILLS_DIR = "SKILLS"
         private const val MAX_ZIP_BYTES = 32L * 1024 * 1024
         private const val CONFIG_FILE = "config.json"
+        /** 教程内容：放在热更新目录里，TutorialRepository 优先读它 */
+        private const val TUTORIAL_FILE = "tutorial.json"
     }
 
     @Serializable
@@ -250,6 +252,7 @@ class HotUpdateManager(
         val parts = linkedSetOf<String>()
         val pendingSkills = mutableListOf<Pair<File, File>>()   // (tmp, final)
         var configBytes: ByteArray? = null
+        var tutorialBytes: ByteArray? = null
 
         ZipInputStream(bytes.inputStream()).use { zin ->
             var entry = zin.nextEntry
@@ -282,6 +285,12 @@ class HotUpdateManager(
                     name == CONFIG_FILE || name == "config/config.json" -> {
                         configBytes = zin.readBytes()
                         parts.add("config")
+                    }
+
+                    // ---- 教程内容 ----
+                    name == TUTORIAL_FILE || name == "tutorial/$TUTORIAL_FILE" -> {
+                        tutorialBytes = zin.readBytes()
+                        parts.add("tutorial")
                     }
 
                     // ---- Web 静态资源（含以前的根目录布局） ----
@@ -329,6 +338,14 @@ class HotUpdateManager(
             webTarget.mkdirs()
             runCatching { cfg.writeBytes(raw) }
                 .onFailure { Log.w(TAG, "config.json 写入失败", it) }
+        }
+
+        // ---- 教程：和 config 一样落在热更新目录，TutorialRepository 按目录名找 ----
+        // 即使这个包不带 web（parts 里没有 web），目录也可能不存在，先确保建好
+        tutorialBytes?.let { raw ->
+            webTarget.mkdirs()
+            runCatching { File(webTarget, TUTORIAL_FILE).writeBytes(raw) }
+                .onFailure { Log.w(TAG, "tutorial.json 写入失败", it) }
         }
 
         if (parts.isEmpty()) error("热更新包里没有可用的内容")

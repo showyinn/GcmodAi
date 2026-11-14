@@ -1804,6 +1804,14 @@ mDNS 地址：使用 .local 主机名，同一网络中的其他设备可通过�
   <string name="setting_model_page_task_mode_enable">自动续写未完成的回复</string>
   <string name="setting_model_page_task_mode_strict">严格任务模式</string>
   <string name="setting_model_page_task_mode_strict_desc">没看到完成标记就一直继续。适合多步长任务；普通聊天也会被续写，不需要就别开</string>
+  <string name="task_mode_status_off">已关闭 · 模型停在哪就是哪</string>
+  <string name="task_mode_status_on">已开启 · 最多自动续写 %1$d 轮</string>
+  <string name="task_mode_status_strict">严格 · 续写到第 %1$d 轮或出现完成标记</string>
+  <string name="task_mode_settings">任务模式设置</string>
+  <string name="task_mode_advanced">进阶</string>
+  <string name="task_mode_marker_builtin">内置标记：[DONE] / 任务完成</string>
+  <string name="task_mode_nudge_builtin">内置续写提示</string>
+  <string name="task_mode_footnote">任务模式不会重跑已经写完的回复：只有被截断、返回空内容、或步数耗尽时才接着跑，续写的文字接在同一个气泡里。</string>
   <string name="setting_model_page_task_mode_rounds">最多自动续写轮数</string>
   <string name="setting_model_page_task_mode_rounds_desc">到上限就停，防止模型原地绕圈把额度烧光</string>
   <string name="setting_model_page_task_mode_marker">完成标记</string>
@@ -1819,4 +1827,11 @@ mDNS 地址：使用 .local 主机名，同一网络中的其他设备可通过�
     <string name="binary_tool_entry">SO 分析</string>
     <string name="harden_entry">APK 加固</string>
     <string name="setting_files_page_folder_harden">加固包</string>
+  <string name="tutorial_title">新手指南</string>
+  <string name="tutorial_search_hint">搜索功能或问题…</string>
+  <string name="tutorial_no_result">没找到匹配的内容</string>
+  <string name="tutorial_no_result_hint">换个说法试试，比如「续写」「工作区」「密钥」</string>
+  <string name="tutorial_reload">重新加载教程</string>
+  <string name="tutorial_entry">使用教程</string>
+  <string name="tutorial_entry_desc">全部功能说明与常见问题</string>
 </resources>

@@ -1802,6 +1802,14 @@
   <string name="setting_model_page_task_mode_enable">Auto-continue unfinished replies</string>
   <string name="setting_model_page_task_mode_strict">Strict task mode</string>
   <string name="setting_model_page_task_mode_strict_desc">Keep going until the model writes the done marker. Right for long multi-step jobs; ordinary chat will be continued too, so leave it off unless you need it</string>
+  <string name="task_mode_status_off">Off · replies stop where the model stops</string>
+  <string name="task_mode_status_on">On · auto-continue up to %1$d rounds</string>
+  <string name="task_mode_status_strict">Strict · keeps going until %1$d rounds or the done marker</string>
+  <string name="task_mode_settings">Task mode settings</string>
+  <string name="task_mode_advanced">Advanced</string>
+  <string name="task_mode_marker_builtin">Built-in markers: [DONE] / task complete</string>
+  <string name="task_mode_nudge_builtin">Built-in nudge</string>
+  <string name="task_mode_footnote">Task mode never restarts a finished reply: it only continues when the reply was cut off, came back empty, or ran out of steps. Auto-continued text is appended to the same bubble.</string>
   <string name="setting_model_page_task_mode_rounds">Max auto-continue rounds</string>
   <string name="setting_model_page_task_mode_rounds_desc">Stops after this many rounds so a looping model cannot burn your quota</string>
   <string name="setting_model_page_task_mode_marker">Done marker</string>
@@ -1817,4 +1825,11 @@
     <string name="binary_tool_entry">SO Analysis</string>
     <string name="harden_entry">APK Harden</string>
     <string name="setting_files_page_folder_harden">Hardened</string>
+  <string name="tutorial_title">Quick start</string>
+  <string name="tutorial_search_hint">Search a feature or a problem…</string>
+  <string name="tutorial_no_result">Nothing matched</string>
+  <string name="tutorial_no_result_hint">Try another word, e.g. continue, workspace, key</string>
+  <string name="tutorial_reload">Reload tutorial</string>
+  <string name="tutorial_entry">Tutorial</string>
+  <string name="tutorial_entry_desc">Every feature explained, plus common problems</string>
 </resources>

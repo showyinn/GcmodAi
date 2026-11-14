@@ -555,6 +555,7 @@ private fun ChatFilesPickerSheet(
             onUpdateSearchService = { index ->
                 vm.updateSettings { it.copy(searchServiceSelected = index) }
             },
+            onUpdateSettings = vm::updateSettings,
             showCompressDialog = showCompressDialog,
             onShowCompressDialogChange = { showCompressDialog = it },
             onDismiss = { dismissAll() },
