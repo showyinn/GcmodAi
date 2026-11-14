@@ -308,8 +308,22 @@ internal fun backgroundTextGenerationParams(
     sessionId = sessionId.toString(),
 )
 
-internal fun Settings.retryPolicy() =
-    if (networkSetting.enableAutoRetry) RetryPolicy.NETWORK else RetryPolicy.NONE
+/**
+ * 本轮的请求重试策略。
+ *
+ * 任务模式开着的时候用 [RetryPolicy.PERSISTENT]（10 次）：
+ * 长任务最怕的不是多等十几秒，而是跑了一半撞上一次网关维护页就整轮报废。
+ * 关掉任务模式时回到普通的 3 次，避免省钱党觉得它在死磕。
+ *
+ * 注意这两个开关是**协作**关系：自动重试管「同一步请求再试一次」，
+ * 任务模式管「这一步已经生成了内容但被截断」。关掉自动重试不等于关掉续写，
+ * 但会让「拿到网页而不是 JSON」这类瞬时故障直接冒到用户面前。
+ */
+internal fun Settings.retryPolicy(): RetryPolicy = when {
+    !networkSetting.enableAutoRetry -> RetryPolicy.NONE
+    taskModeEnabled -> RetryPolicy.PERSISTENT
+    else -> RetryPolicy.NETWORK
+}
 
 /**
  * 把设置里的任务模式开关翻译成 agent 循环能用的策略。

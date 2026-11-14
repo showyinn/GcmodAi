@@ -52,6 +52,7 @@ import com.gcmodai.ai.util.encodeBase64
 import com.gcmodai.ai.util.json
 import com.gcmodai.ai.util.mergeCustomBody
 import com.gcmodai.ai.util.mergeCustomHeaders
+import com.gcmodai.ai.util.parseJsonOrThrow
 import com.gcmodai.ai.util.parseErrorDetail
 import com.gcmodai.ai.util.stringSafe
 import com.gcmodai.common.http.await
@@ -143,7 +144,7 @@ internal class InteractionsAPI(
                 val bodyRaw = response?.body?.stringSafe()
                 try {
                     if (!bodyRaw.isNullOrBlank()) {
-                        exception = json.parseToJsonElement(bodyRaw).parseErrorDetail()
+                        exception = json.parseJsonOrThrow(bodyRaw).parseErrorDetail()
                     } else if (t == null && response != null) {
                         exception = Exception("Unknown error: ${response.code}")
                     }

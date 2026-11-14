@@ -35,6 +35,7 @@ import com.gcmodai.ai.ui.ToolApprovalState
 import com.gcmodai.ai.ui.UIMessage
 import com.gcmodai.ai.ui.UIMessagePart
 import com.gcmodai.ai.ui.isEmptyInputMessage
+import com.gcmodai.ai.util.UpstreamHtmlException
 import com.gcmodai.common.android.Logging
 import com.gcmodai.app.AppScope
 import com.gcmodai.app.R
@@ -736,6 +737,8 @@ class ChatService(
             is UnknownHostException -> R.string.chat_generation_network_unknown_host
             is SocketTimeoutException -> R.string.chat_generation_network_timeout
             is ConnectException, is NoRouteToHostException -> R.string.chat_generation_network_unreachable
+            // 上游回网页是网关层的瞬时问题，说「网络已断开」会误导用户去查宽带
+            is UpstreamHtmlException -> R.string.chat_generation_upstream_html
             else -> R.string.chat_generation_network_disconnected
         }
         return context.getString(

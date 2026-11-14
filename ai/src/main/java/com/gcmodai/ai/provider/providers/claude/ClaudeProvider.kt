@@ -67,6 +67,7 @@ import com.gcmodai.ai.util.encodeBase64
 import com.gcmodai.ai.util.json
 import com.gcmodai.ai.util.mergeCustomBody
 import com.gcmodai.ai.util.mergeCustomHeaders
+import com.gcmodai.ai.util.parseJsonOrThrow
 import com.gcmodai.ai.util.parseErrorDetail
 import com.gcmodai.ai.util.stringSafe
 import com.gcmodai.common.http.await
@@ -257,7 +258,7 @@ class ClaudeProvider(private val client: OkHttpClient, context: Context? = null)
             }
 
             val bodyStr = response.body?.string() ?: ""
-            val bodyJson = json.parseToJsonElement(bodyStr).jsonObject
+            val bodyJson = json.parseJsonOrThrow(bodyStr).jsonObject
             val data = bodyJson["data"]?.jsonArray ?: return@withContext emptyList()
 
             data.mapNotNull { modelJson ->
@@ -313,7 +314,7 @@ class ClaudeProvider(private val client: OkHttpClient, context: Context? = null)
         }
 
         val bodyStr = response.body?.string() ?: ""
-        val bodyJson = json.parseToJsonElement(bodyStr).jsonObject
+        val bodyJson = json.parseJsonOrThrow(bodyStr).jsonObject
 
         // 从 JsonObject 中提取必要的信息
         val id = bodyJson["id"]?.jsonPrimitive?.contentOrNull ?: ""
@@ -398,7 +399,7 @@ class ClaudeProvider(private val client: OkHttpClient, context: Context? = null)
                 val bodyRaw = response?.body?.stringSafe()
                 try {
                     if (!bodyRaw.isNullOrBlank()) {
-                        val bodyElement = Json.parseToJsonElement(bodyRaw)
+                        val bodyElement = Json.parseJsonOrThrow(bodyRaw)
                         Log.i(TAG, "Error response: $bodyElement")
                         exception = bodyElement.parseErrorDetail()
                     }
