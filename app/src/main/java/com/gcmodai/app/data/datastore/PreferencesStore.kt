@@ -131,6 +131,7 @@ class SettingsStore internal constructor(
 
         // 任务模式 / 断流保护：模型没干完就自动续写，不让一轮对话停在半路
         val TASK_MODE_ENABLED = booleanPreferencesKey("task_mode_enabled")
+        val TASK_MODE_STRICT = booleanPreferencesKey("task_mode_strict")
         val TASK_MODE_MAX_CONTINUATIONS = intPreferencesKey("task_mode_max_continuations")
         val TASK_MODE_DONE_MARKER = stringPreferencesKey("task_mode_done_marker")
         val TASK_MODE_NUDGE = stringPreferencesKey("task_mode_nudge")

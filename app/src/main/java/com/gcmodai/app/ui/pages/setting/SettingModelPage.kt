@@ -301,6 +301,14 @@ private fun ModelSettingsPage(settings: Settings, vm: SettingVM, contentPadding:
                 )
                 // 次数和完成标记只在开启时才有意义
                 if (settings.taskModeEnabled) {
+                    switchItem(
+                        checked = settings.taskModeStrict,
+                        onCheckedChange = { vm.updateSettings { latest -> latest.copy(taskModeStrict = it) } },
+                        supportingContent = {
+                            Text(stringResource(R.string.setting_model_page_task_mode_strict_desc))
+                        },
+                        headlineContent = { Text(stringResource(R.string.setting_model_page_task_mode_strict)) },
+                    )
                     formItem(
                         headlineContent = { Text(stringResource(R.string.setting_model_page_task_mode_rounds)) },
                         supportingContent = { Text(stringResource(R.string.setting_model_page_task_mode_rounds_desc)) },

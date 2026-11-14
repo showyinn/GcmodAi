@@ -1800,6 +1800,8 @@
   <string name="setting_model_page_task_mode_desc">Keep working until the task is actually done: empty replies, cut-off output and unfinished tasks continue automatically instead of stopping halfway</string>
   <string name="setting_model_page_task_mode_header">Task mode &amp; stream guard</string>
   <string name="setting_model_page_task_mode_enable">Auto-continue unfinished replies</string>
+  <string name="setting_model_page_task_mode_strict">Strict task mode</string>
+  <string name="setting_model_page_task_mode_strict_desc">Keep going until the model writes the done marker. Right for long multi-step jobs; ordinary chat will be continued too, so leave it off unless you need it</string>
   <string name="setting_model_page_task_mode_rounds">Max auto-continue rounds</string>
   <string name="setting_model_page_task_mode_rounds_desc">Stops after this many rounds so a looping model cannot burn your quota</string>
   <string name="setting_model_page_task_mode_marker">Done marker</string>

@@ -1802,6 +1802,8 @@ mDNS 地址：使用 .local 主机名，同一网络中的其他设备可通过�
   <string name="setting_model_page_task_mode_desc">没干完就一直干：断流、被截断、任务没做完都会自动接着跑，不会说到一半就停</string>
   <string name="setting_model_page_task_mode_header">任务模式与断流保护</string>
   <string name="setting_model_page_task_mode_enable">自动续写未完成的回复</string>
+  <string name="setting_model_page_task_mode_strict">严格任务模式</string>
+  <string name="setting_model_page_task_mode_strict_desc">没看到完成标记就一直继续。适合多步长任务；普通聊天也会被续写，不需要就别开</string>
   <string name="setting_model_page_task_mode_rounds">最多自动续写轮数</string>
   <string name="setting_model_page_task_mode_rounds_desc">到上限就停，防止模型原地绕圈把额度烧光</string>
   <string name="setting_model_page_task_mode_marker">完成标记</string>

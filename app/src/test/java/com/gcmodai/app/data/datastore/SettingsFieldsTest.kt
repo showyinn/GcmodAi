@@ -130,6 +130,7 @@ private val SAMPLE = Settings(
     autoHotUpdate = false,
     // 任务模式：默认全开，样本里取反以便验证读写
     taskModeEnabled = false,
+    taskModeStrict = true,
     taskModeMaxContinuations = 12,
     taskModeDoneMarker = "@@DONE@@",
     taskModeNudge = "go on",
@@ -203,6 +204,7 @@ private val STORED_KEYS = setOf(
     "auto_update_wifi_only",
     "auto_hot_update",
     "task_mode_enabled",
+    "task_mode_strict",
     "task_mode_max_continuations",
     "task_mode_done_marker",
     "task_mode_nudge",
