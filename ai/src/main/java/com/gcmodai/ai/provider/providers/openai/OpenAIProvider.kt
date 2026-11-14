@@ -33,6 +33,7 @@ import com.gcmodai.ai.ui.UIMessage
 import com.gcmodai.ai.util.KeyRoulette
 import com.gcmodai.ai.util.configureReferHeaders
 import com.gcmodai.ai.util.json
+import com.gcmodai.ai.util.parseJsonOrThrow
 import com.gcmodai.ai.util.mergeCustomBody
 import com.gcmodai.ai.util.mergeCustomHeaders
 import com.gcmodai.common.http.await
@@ -74,7 +75,7 @@ class OpenAIProvider(
             }
 
             val bodyStr = response.body?.string() ?: ""
-            val bodyJson = json.parseToJsonElement(bodyStr).jsonObject
+            val bodyJson = json.parseJsonOrThrow(bodyStr).jsonObject
             val data = bodyJson["data"]?.jsonArray ?: return@withContext emptyList()
 
             data.mapNotNull { modelJson ->
@@ -164,7 +165,7 @@ class OpenAIProvider(
         }
 
         val bodyStr = response.body?.string() ?: ""
-        val bodyJson = json.parseToJsonElement(bodyStr).jsonObject
+        val bodyJson = json.parseJsonOrThrow(bodyStr).jsonObject
         val data = bodyJson["data"]?.jsonArray ?: error("No data in response")
         val model = bodyJson["model"]?.jsonPrimitive?.contentOrNull ?: params.model.modelId
 
@@ -353,7 +354,7 @@ class OpenAIProvider(
     }
 
     private suspend fun parseImageResponse(bodyStr: String): List<ImageGenerationItem> {
-        val body = json.parseToJsonElement(bodyStr).jsonObject
+        val body = json.parseJsonOrThrow(bodyStr).jsonObject
         val defaultFormat = body["output_format"]?.jsonPrimitive?.contentOrNull ?: "png"
         val data = body["data"]?.jsonArray ?: error("No data in image response")
         return data.map { element ->

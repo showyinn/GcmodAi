@@ -61,6 +61,7 @@ import com.gcmodai.ai.util.configureReferHeaders
 import com.gcmodai.ai.util.configureSessionHeaders
 import com.gcmodai.ai.util.encodeBase64
 import com.gcmodai.ai.util.json
+import com.gcmodai.ai.util.parseJsonOrThrow
 import com.gcmodai.ai.util.mergeCustomBody
 import com.gcmodai.ai.util.mergeCustomHeaders
 import com.gcmodai.ai.util.removeElements
@@ -213,7 +214,7 @@ class GoogleProvider(private val client: OkHttpClient, context: Context? = null)
         }
 
         val bodyStr = response.body?.string() ?: ""
-        val bodyJson = json.parseToJsonElement(bodyStr).jsonObject
+        val bodyJson = json.parseJsonOrThrow(bodyStr).jsonObject
 
         val candidate = bodyJson["candidates"]?.jsonArray?.firstOrNull()?.jsonObject
             ?: error("No candidates in response")
@@ -311,7 +312,7 @@ class GoogleProvider(private val client: OkHttpClient, context: Context? = null)
                     if (t == null && response != null) {
                         val bodyStr = response.body.stringSafe()
                         if (!bodyStr.isNullOrEmpty()) {
-                            val bodyElement = json.parseToJsonElement(bodyStr)
+                            val bodyElement = json.parseJsonOrThrow(bodyStr)
                             println(bodyElement)
                             if (bodyElement is JsonObject) {
                                 exception = Exception(

@@ -1832,4 +1832,5 @@
   <string name="tutorial_reload">Reload tutorial</string>
   <string name="tutorial_entry">Tutorial</string>
   <string name="tutorial_entry_desc">Every feature explained, plus common problems</string>
+  <string name="chat_generation_upstream_html">The provider returned a web page instead of data (gateway maintenance or block page)</string>
 </resources>

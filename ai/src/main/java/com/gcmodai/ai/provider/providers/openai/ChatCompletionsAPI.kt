@@ -55,6 +55,7 @@ import com.gcmodai.ai.util.encodeBase64
 import com.gcmodai.ai.util.json
 import com.gcmodai.ai.util.mergeCustomBody
 import com.gcmodai.ai.util.mergeCustomHeaders
+import com.gcmodai.ai.util.parseJsonOrThrow
 import com.gcmodai.ai.util.parseErrorDetail
 import com.gcmodai.ai.util.stringSafe
 import com.gcmodai.common.http.await
@@ -107,7 +108,7 @@ class ChatCompletionsAPI(
         }
 
         val bodyStr = response.body?.string() ?: ""
-        val bodyJson = json.parseToJsonElement(bodyStr).jsonObject
+        val bodyJson = json.parseJsonOrThrow(bodyStr).jsonObject
 
         // 从 JsonObject 中提取必要的信息
         val id = bodyJson["id"]?.jsonPrimitive?.contentOrNull ?: ""
@@ -193,7 +194,7 @@ class ChatCompletionsAPI(
                 val bodyRaw = response?.body?.stringSafe()
                 try {
                     if (!bodyRaw.isNullOrBlank()) {
-                        val bodyElement = Json.parseToJsonElement(bodyRaw)
+                        val bodyElement = Json.parseJsonOrThrow(bodyRaw)
                         println(bodyElement)
                         exception = bodyElement.parseErrorDetail()
                         Log.i(TAG, "onFailure: $exception")

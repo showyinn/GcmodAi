@@ -2,6 +2,8 @@ package com.gcmodai.app.data.ai
 
 import com.gcmodai.ai.agent.ContinuationPolicy
 import com.gcmodai.ai.agent.ContinuationTrigger
+import com.gcmodai.ai.agent.RetryPolicy
+import com.gcmodai.app.data.datastore.NetworkSetting
 import com.gcmodai.app.data.datastore.Settings
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -93,5 +95,42 @@ class TaskModePolicyTest {
 
         assertFalse(policy.enabled)
         assertTrue(ContinuationTrigger.EMPTY in policy.triggers)
+    }
+
+    // ---- 重试策略：任务模式开得狠一点 ----
+
+    @Test
+    fun `task mode raises the request retry budget to ten`() {
+        val settings = Settings(
+            taskModeEnabled = true,
+            networkSetting = NetworkSetting(enableAutoRetry = true),
+        )
+
+        // 长任务撞一次网关维护页就整轮报废，代价远大于多等十几秒
+        assertEquals(RetryPolicy.PERSISTENT, settings.retryPolicy())
+        assertEquals(10, settings.retryPolicy().maxRetries)
+    }
+
+    @Test
+    fun `without task mode the retry budget stays at three`() {
+        val settings = Settings(
+            taskModeEnabled = false,
+            networkSetting = NetworkSetting(enableAutoRetry = true),
+        )
+
+        assertEquals(RetryPolicy.NETWORK, settings.retryPolicy())
+        assertEquals(3, settings.retryPolicy().maxRetries)
+    }
+
+    @Test
+    fun `turning auto retry off disables retries entirely`() {
+        val settings = Settings(
+            taskModeEnabled = true,
+            networkSetting = NetworkSetting(enableAutoRetry = false),
+        )
+
+        // 用户明确关了自动重试，任务模式也不能偷偷重试
+        assertEquals(RetryPolicy.NONE, settings.retryPolicy())
+        assertEquals(0, settings.retryPolicy().maxRetries)
     }
 }
