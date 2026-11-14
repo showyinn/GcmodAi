@@ -54,6 +54,21 @@ data class Settings(
     val autoUpdateWifiOnly: Boolean = true,
     /** 自动应用热更新（默认开）：界面/配置类更新不需要装新 APK */
     val autoHotUpdate: Boolean = true,
+    /**
+     * 任务模式（默认开）：模型没真正干完就自动接着跑。
+     *
+     * 解决的实际问题有三个，全都见过：
+     * 1. 上游断流，回复说到一半就停，界面直接进入完成态；
+     * 2. max_tokens 撞顶被截断，长任务永远只写一半；
+     * 3. 长任务里模型提前收工，人不盯着就得手动发「继续」。
+     */
+    val taskModeEnabled: Boolean = true,
+    /** 任务模式最多自动续写几次；0 等于关闭（兼容只想留开关的人） */
+    val taskModeMaxContinuations: Int = 8,
+    /** 任务完成标记：模型输出里出现它就收工；留空则不按标记判断 */
+    val taskModeDoneMarker: String = "[DONE]",
+    /** 续写时发给模型的提示；留空则用内置文案 */
+    val taskModeNudge: String = "",
     /** ffmpeg 工具的一次性迁移标记：老用户升级后自动补上该工具（之后用户自己关掉就不再补） */
     val ffmpegToolMigrated: Boolean = false,
     val displaySetting: DisplaySetting = DisplaySetting(),

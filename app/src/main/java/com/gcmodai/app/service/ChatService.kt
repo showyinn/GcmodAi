@@ -644,6 +644,16 @@ class ChatService(
                             session.processingStatus.value = retryStatus(event.attempt)
                         }
 
+                        is AgentEvent.Continuing -> {
+                            // 任务模式/断流保护接管了：告诉用户这是自动续写，不是卡住也不是结束
+                            Log.i(TAG, "runTurn: continuing ${event.round}/${event.max}")
+                            session.processingStatus.value = context.getString(
+                                R.string.chat_generation_continuing,
+                                event.round,
+                                event.max,
+                            )
+                        }
+
                         is AgentEvent.Finished -> {
                             Log.i(TAG, "runTurn: finished (${event.reason})")
                             finishReason = event.reason

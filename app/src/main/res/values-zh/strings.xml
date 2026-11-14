@@ -1311,6 +1311,7 @@ mDNS 地址：使用 .local 主机名，同一网络中的其他设备可通过�
   <string name="chat_generation_network_timeout">连接超时</string>
   <string name="chat_generation_network_unreachable">无法连接到服务器</string>
   <string name="chat_generation_network_disconnected">网络连接已断开</string>
+  <string name="chat_generation_continuing">任务模式：自动续写中（%1$d/%2$d）…</string>
   <string name="setting_tts_page_default_playback_speed">默认播放速度</string>
   <string name="setting_tts_page_default_playback_speed_description">本地应用于每个TTS提供商，不会更改其合成设置。</string>
   <string name="search_page_scope_current_assistant">当前助手</string>
@@ -1797,6 +1798,16 @@ mDNS 地址：使用 .local 主机名，同一网络中的其他设备可通过�
   <string name="setting_model_page_memory_model">记忆整理模型</string>
   <string name="setting_model_page_memory_model_desc">用于在后台将对话整理为长期记忆的模型；未设置时使用快速模型</string>
   <string name="setting_model_page_memory_model_follow_fast">跟随快速模型</string>
+  <string name="setting_model_page_task_mode">任务模式</string>
+  <string name="setting_model_page_task_mode_desc">没干完就一直干：断流、被截断、任务没做完都会自动接着跑，不会说到一半就停</string>
+  <string name="setting_model_page_task_mode_header">任务模式与断流保护</string>
+  <string name="setting_model_page_task_mode_enable">自动续写未完成的回复</string>
+  <string name="setting_model_page_task_mode_rounds">最多自动续写轮数</string>
+  <string name="setting_model_page_task_mode_rounds_desc">到上限就停，防止模型原地绕圈把额度烧光</string>
+  <string name="setting_model_page_task_mode_marker">完成标记</string>
+  <string name="setting_model_page_task_mode_marker_desc">回复里出现这段文字就算任务完成；留空则用内置的几种标记</string>
+  <string name="setting_model_page_prompt_task_nudge">任务模式续写提示</string>
+  <string name="setting_model_page_task_nudge_prompt_vars">需要续写时作为一条用户消息发出去，别写太长</string>
     <string name="assistant_page_local_tools_workspace_title">Server workspace</string>
     <string name="assistant_page_local_tools_workspace_desc">Let AI write code in your 100MB cloud workspace and deploy it as a public site</string>
     <string name="assistant_page_local_tools_ssh_title">SSH remote server</string>

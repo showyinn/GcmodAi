@@ -118,4 +118,6 @@ internal fun Settings.withoutInvalidReferences(): Settings {
 private fun Settings.withValuesInRange(): Settings = copy(
     searchServiceSelected = searchServiceSelected.coerceIn(0, (searchServices.size - 1).coerceAtLeast(0)),
     defaultTTSPlaybackSpeed = defaultTTSPlaybackSpeed.coerceIn(0.5f, 2.0f),
+    // 续写次数没有负数的意义；上限 50 防止手滑填个 99999 把额度烧光
+    taskModeMaxContinuations = taskModeMaxContinuations.coerceIn(0, 50),
 )

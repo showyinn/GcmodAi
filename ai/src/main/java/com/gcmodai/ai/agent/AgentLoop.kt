@@ -9,6 +9,7 @@ import kotlinx.serialization.json.put
 import com.gcmodai.ai.core.MessageRole
 import com.gcmodai.ai.core.sum
 import com.gcmodai.ai.provider.TextGenerationParams
+import com.gcmodai.ai.ui.StreamChunk
 import com.gcmodai.ai.ui.StreamChunkHandler
 import com.gcmodai.ai.ui.ToolApprovalState
 import com.gcmodai.ai.ui.UIMessage
@@ -35,6 +36,16 @@ internal class AgentLoop(
     // 本轮的助手消息；新的一轮在第一次请求模型时才创建
     private var message: UIMessage?
 
+    // 续写提示：这一步要不要紧跟在当前助手消息后面发给模型（只发一次，发完就清）
+    private val extra = mutableListOf<UIMessage>()
+
+    // 最近一次请求的结束原因，用来判断是不是被输出上限截断
+    private var lastFinishReason: String? = null
+
+    // 本步开始前已有的 part 数：判断「这一步什么都没产出」要看这一步新加的 part，
+    // 否则前面步骤写过的内容会让空回复看起来像有内容
+    private var stepPartsFrom = 0
+
     init {
         val last = request.messages.lastOrNull()
         if (last?.role == MessageRole.ASSISTANT) {
@@ -48,19 +59,89 @@ internal class AgentLoop(
 
     suspend fun run() {
         var steps = 0
+        var continuations = 0
         while (true) {
             val current = message
             if (current != null && current.getTools().any { !it.isExecuted }) {
                 val pending = requestApprovals(current)
                 if (pending.isNotEmpty()) return finish(AgentFinishReason.AwaitingApproval(pending))
                 executeTools()
-            } else if (current != null && steps > 0) {
-                return finish(AgentFinishReason.Completed)
+            } else if (current != null && steps > 0 && extra.isEmpty()) {
+                // 模型这一步没再调工具，看起来要收工了：先看是真空了、被截断了，还是任务没做完。
+                // extra 不为空说明刚决定续写，直接去请求模型，别在这里再判一次同样的条件
+                val nudge = nextNudge(
+                    current = current,
+                    triggers = setOf(
+                        ContinuationTrigger.EMPTY,
+                        ContinuationTrigger.TRUNCATED,
+                        ContinuationTrigger.UNFINISHED,
+                    ),
+                    used = continuations,
+                )
+                if (nudge == null) return finish(AgentFinishReason.Completed)
+                continuations++
+                continueWith(nudge, continuations)
             }
-            if (steps == request.maxSteps) return finish(AgentFinishReason.StepLimitReached)
+            if (steps >= request.maxSteps) {
+                // 步数配额用完但活可能还没干完：续写可以突破这个上限，只是同样受次数限制。
+                // 续写时给一份新的步数配额，否则下一轮会立刻又撞上这里，一次都请求不出去
+                val nudge = nextNudge(
+                    current = message,
+                    triggers = setOf(ContinuationTrigger.STEP_LIMIT),
+                    used = continuations,
+                )
+                if (nudge == null) return finish(AgentFinishReason.StepLimitReached)
+                continuations++
+                continueWith(nudge, continuations)
+                steps = 0
+            }
             generateStep()
             steps++
         }
+    }
+
+    // 续写：把提示排在这条助手消息后面发给模型，产出仍然写回同一条消息，界面上不会断成两截
+    private suspend fun continueWith(nudge: String, round: Int) {
+        extra += UIMessage.user(nudge)
+        events.emit(AgentEvent.Continuing(round, request.continuation.maxContinuations))
+    }
+
+    /**
+     * 命中续写条件时返回要发出去的提示，否则返回 null。
+     *
+     * 只看「调用方想知道」和「用户已启用」两个集合的交集：不加交集的话，
+     * 用户只开了「被截断就续写」，也会被没开启的「任务没做完」判定命中。
+     */
+    private fun nextNudge(
+        current: UIMessage?,
+        triggers: Set<ContinuationTrigger>,
+        used: Int,
+    ): String? {
+        val policy = request.continuation
+        if (!policy.enabled || used >= policy.maxContinuations) return null
+        val active = triggers.filter { it in policy.triggers }
+        if (active.isEmpty()) return null
+        if (active.none { matches(it, current, policy) }) return null
+        return policy.nudge
+    }
+
+    private fun matches(
+        trigger: ContinuationTrigger,
+        current: UIMessage?,
+        policy: ContinuationPolicy,
+    ): Boolean = when (trigger) {
+        // 这一步什么都没产出：断流、空包、被上游吃掉
+        ContinuationTrigger.EMPTY -> !hasVisibleContent(current?.parts?.drop(stepPartsFrom))
+        // 被输出上限截断，后面肯定还有内容
+        ContinuationTrigger.TRUNCATED -> isTruncated(lastFinishReason)
+        // 有完成标记却一直没看到，说明模型自己也认为没干完。
+        // 没配标记时按「永远还没干完」处理，交给次数上限收口
+        ContinuationTrigger.UNFINISHED -> {
+            val markers = policy.doneMarkers.filter { it.isNotBlank() }
+            val text = current?.toText().orEmpty()
+            markers.isEmpty() || markers.none { it in text }
+        }
+        ContinuationTrigger.STEP_LIMIT -> true
     }
 
     // 新的工具调用按定义判断是否需要审批，需要的标为 Pending；返回仍在等待审批的调用
@@ -83,7 +164,14 @@ internal class AgentLoop(
 
     private suspend fun generateStep() {
         val current = message
-        val step = hooks.prepareStep(if (current == null) history else history + current)
+        // 续写提示排在这条助手消息后面：只影响这一步的请求，不写进消息内容，界面上不会多出一条用户气泡
+        val pending = extra.toList()
+        extra.clear()
+        val prepared = when {
+            current == null -> history
+            else -> history + current
+        } + pending
+        val step = hooks.prepareStep(prepared)
         val params = step.params.copy(tools = request.tools)
         val base = current ?: UIMessage(
             role = MessageRole.ASSISTANT,
@@ -95,6 +183,7 @@ internal class AgentLoop(
         } else {
             generate(step.messages, params, base)
         }
+        stepPartsFrom = base.parts.size
         update(hooks.finishStep(generated, newPartsFrom = base.parts.size).copy(finishedAt = now()))
     }
 
@@ -113,8 +202,11 @@ internal class AgentLoop(
                 val handler = StreamChunkHandler(params.model)
                 var attempt = stepStart
                 var firstChunk: TimeMark? = null
+                lastFinishReason = null
                 request.provider.streamText(request.providerSetting, messages, params).collect { chunk ->
                     try {
+                        // 断流保护要知道这一步到底是被限长截断，还是模型自己说完了
+                        if (chunk is StreamChunk.Finish) lastFinishReason = chunk.finishReason
                         val mark = firstChunk ?: TimeSource.Monotonic.markNow().also { firstChunk = it }
                         attempt = handler.handle(listOf(attempt), chunk).single()
                         preview(attempt.withStepStats(base, mark.elapsedNow()), newPartsFrom = base.parts.size)
@@ -143,6 +235,7 @@ internal class AgentLoop(
             requestMark = TimeSource.Monotonic.markNow()
             request.provider.generateText(request.providerSetting, messages, params)
         }
+        lastFinishReason = result.finishReason
         val requestTime = requestMark.elapsedNow()
         // 和流式一样只追加 part，不并进之前步骤的文本或推理里，否则 newPartsFrom 之后就不全是这一步的内容了。
         // 一次请求只有一份 usage；没有返回时保持为空，累加时沿用之前步骤的统计
@@ -217,12 +310,46 @@ internal class AgentLoop(
     }
 
     private suspend fun finish(reason: AgentFinishReason) {
-        events.emit(AgentEvent.Finished(checkNotNull(message), reason))
+        val final = message ?: error("agent finished without an assistant message")
+        // 续写用完了还是空的：写一句兜底话，别在会话里留下一个点不开的空气泡。
+        // 等审批时不算空（工具调用就是这一步的产出），不能塞文本进去
+        val fallback = request.continuation.emptyFallback
+        val patched = if (reason !is AgentFinishReason.AwaitingApproval &&
+            fallback.isNotBlank() && !hasVisibleContent(final.parts)
+        ) {
+            final.copy(parts = final.parts + UIMessagePart.Text(fallback)).also { update(it) }
+        } else {
+            final
+        }
+        events.emit(AgentEvent.Finished(patched, reason))
     }
 }
 
 private fun errorOutput(error: String): List<UIMessagePart> =
     listOf(UIMessagePart.Text(buildJsonObject { put("error", error) }.toString()))
+
+/**
+ * 这一步是不是被输出上限截断的。
+ *
+ * 各家 provider 的写法不统一（OpenAI 的 length、OpenAI Responses 的 max_output_tokens、
+ * Anthropic 的 max_tokens、Gemini 的 MAX_TOKENS、以及不完整状态），这里统一按小写子串认。
+ */
+private fun isTruncated(finishReason: String?): Boolean {
+    val reason = finishReason?.lowercase()?.takeIf { it.isNotBlank() } ?: return false
+    return "length" in reason || "max_token" in reason || "incomplete" in reason
+}
+
+// 只有文本、推理这类看得见的内容才算数：纯工具调用、空 part 同样要续写
+private fun hasVisibleContent(parts: List<UIMessagePart>?): Boolean {
+    if (parts == null) return false
+    return parts.any { part ->
+        when (part) {
+            is UIMessagePart.Text -> part.text.isNotBlank()
+            is UIMessagePart.Reasoning -> part.reasoning.isNotBlank()
+            else -> false
+        }
+    }
+}
 
 // 把本步的 usage 和生成耗时累加到之前步骤的统计上；接收者只带本步的 usage
 private fun UIMessage.withStepStats(stepBase: UIMessage, stepTime: Duration): UIMessage = copy(

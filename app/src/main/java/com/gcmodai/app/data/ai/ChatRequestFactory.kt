@@ -5,6 +5,7 @@ import android.util.Log
 import kotlinx.coroutines.flow.MutableStateFlow
 import com.gcmodai.ai.agent.AgentHooks
 import com.gcmodai.ai.agent.AgentRequest
+import com.gcmodai.ai.agent.ContinuationPolicy
 import com.gcmodai.ai.agent.RetryPolicy
 import com.gcmodai.ai.agent.StepRequest
 import com.gcmodai.ai.agent.withRetry
@@ -144,6 +145,8 @@ class ChatRequestFactory(
             tools = turn.tools,
             stream = turn.assistant.streamOutput,
             retry = turn.settings.retryPolicy(),
+            // 任务模式 / 断流保护：模型没干完就自动续写，开关在设置-模型页
+            continuation = turn.settings.continuationPolicy(),
         )
         val hooks = object : AgentHooks {
             override suspend fun prepareStep(messages: List<UIMessage>): StepRequest {
@@ -306,3 +309,28 @@ internal fun backgroundTextGenerationParams(
 
 internal fun Settings.retryPolicy() =
     if (networkSetting.enableAutoRetry) RetryPolicy.NETWORK else RetryPolicy.NONE
+
+/**
+ * 把设置里的任务模式开关翻译成 agent 循环能用的策略。
+ *
+ * 这里刻意只做映射、不带默认值判断：开关和次数都在 [Settings] 里，
+ * 循环本身不读设置，测试可以只构造策略。
+ */
+internal fun Settings.continuationPolicy(): ContinuationPolicy {
+    if (!taskModeEnabled) return ContinuationPolicy.NONE
+    val marker = taskModeDoneMarker.trim()
+    val markers = if (marker.isEmpty()) {
+        // 用户把标记删空：退回内置那几种，别让「任务没干完」的判定失效
+        ContinuationPolicy.DEFAULT_DONE_MARKERS
+    } else {
+        (listOf(marker) + ContinuationPolicy.DEFAULT_DONE_MARKERS).distinct()
+    }
+    return ContinuationPolicy(
+        maxContinuations = taskModeMaxContinuations,
+        triggers = ContinuationPolicy.DEFAULT_TRIGGERS,
+        doneMarkers = markers,
+        nudge = taskModeNudge.trim().ifEmpty { ContinuationPolicy.DEFAULT_NUDGE },
+        // 续写到上限还是空的：给一句兜底，别留下一个点不开的空气泡
+        emptyFallback = "（模型这次没有返回内容，点重试再来一次。）",
+    )
+}

@@ -13,6 +13,7 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.LargeFlexibleTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -51,10 +52,12 @@ import com.gcmodai.app.ui.components.nav.BackButton
 import com.gcmodai.app.ui.components.ui.CardGroup
 import com.gcmodai.app.ui.components.ui.CardGroupIcon
 import com.gcmodai.app.ui.components.ui.CardGroupScope
+import com.gcmodai.app.ui.components.ui.CardGroupValue
 import com.gcmodai.app.ui.components.ui.PagerTab
 import com.gcmodai.app.ui.components.ui.PagerTabs
 import com.gcmodai.app.ui.components.ui.switchItem
 import com.gcmodai.app.ui.theme.CustomColors
+import kotlin.math.roundToInt
 import kotlin.uuid.Uuid
 import org.koin.androidx.compose.koinViewModel
 
@@ -277,6 +280,45 @@ private fun ModelSettingsPage(settings: Settings, vm: SettingVM, contentPadding:
                     iconContainerColor = containerColor,
                     iconContentColor = contentColor,
                 )
+            }
+        }
+        item {
+            val containerColor = MaterialTheme.colorScheme.secondaryContainer
+            val contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+            CardGroup(title = { Text(stringResource(R.string.setting_model_page_task_mode_header)) }) {
+                switchItem(
+                    checked = settings.taskModeEnabled,
+                    onCheckedChange = { vm.updateSettings { latest -> latest.copy(taskModeEnabled = it) } },
+                    leadingContent = {
+                        CardGroupIcon(
+                            HugeIcons.AiBrain01,
+                            containerColor = containerColor,
+                            contentColor = contentColor,
+                        )
+                    },
+                    supportingContent = { Text(stringResource(R.string.setting_model_page_task_mode_desc)) },
+                    headlineContent = { Text(stringResource(R.string.setting_model_page_task_mode_enable)) },
+                )
+                // 次数和完成标记只在开启时才有意义
+                if (settings.taskModeEnabled) {
+                    formItem(
+                        headlineContent = { Text(stringResource(R.string.setting_model_page_task_mode_rounds)) },
+                        supportingContent = { Text(stringResource(R.string.setting_model_page_task_mode_rounds_desc)) },
+                        trailingContent = { CardGroupValue(settings.taskModeMaxContinuations.toString()) },
+                    ) {
+                        Slider(
+                            value = settings.taskModeMaxContinuations.toFloat(),
+                            onValueChange = { value ->
+                                vm.updateSettings { latest ->
+                                    latest.copy(taskModeMaxContinuations = value.roundToInt())
+                                }
+                            },
+                            // 0 就是关掉续写，和上面的开关不是一回事，所以从 1 起
+                            valueRange = 1f..20f,
+                            steps = 18,
+                        )
+                    }
+                }
             }
         }
         item {

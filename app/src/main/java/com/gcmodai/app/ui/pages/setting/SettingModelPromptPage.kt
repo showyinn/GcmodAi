@@ -157,6 +157,26 @@ private enum class PromptSlot(
         get = { it.ocrPrompt },
         set = { settings, value -> settings.copy(ocrPrompt = value) },
     ),
+
+    // 任务模式续写提示：留空时用内置文案，所以「重置」写回空串而不是写一段默认话
+    TASK_NUDGE(
+        icon = HugeIcons.Idea01,
+        title = R.string.setting_model_page_prompt_task_nudge,
+        variables = R.string.setting_model_page_task_nudge_prompt_vars,
+        default = "",
+        get = { it.taskModeNudge },
+        set = { settings, value -> settings.copy(taskModeNudge = value) },
+    ),
+
+    // 任务完成标记：和上面几项一样是纯文本，放同一个编辑面板里改
+    TASK_MARKER(
+        icon = HugeIcons.Heading,
+        title = R.string.setting_model_page_task_mode_marker,
+        variables = R.string.setting_model_page_task_mode_marker_desc,
+        default = "",
+        get = { it.taskModeDoneMarker },
+        set = { settings, value -> settings.copy(taskModeDoneMarker = value) },
+    ),
 }
 
 private val Whitespace = Regex("\\s+")

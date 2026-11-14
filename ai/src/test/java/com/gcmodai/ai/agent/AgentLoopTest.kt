@@ -43,6 +43,7 @@ class AgentLoopTest {
         stream: Boolean = true,
         maxSteps: Int = 256,
         retry: RetryPolicy = RetryPolicy.NONE,
+        continuation: ContinuationPolicy = ContinuationPolicy.NONE,
     ) = AgentRequest(
         provider = provider,
         providerSetting = ProviderSetting.OpenAI(),
@@ -51,6 +52,7 @@ class AgentLoopTest {
         stream = stream,
         maxSteps = maxSteps,
         retry = retry,
+        continuation = continuation,
     )
 
     private suspend fun runToEnd(
@@ -495,6 +497,216 @@ class AgentLoopTest {
 
         assertEquals(listOf("before!", "after!"), message.texts())
     }
+
+    // ---- 任务模式 / 断流保护 ----
+
+    @Test
+    fun `continuation is off by default so an empty reply still completes`() = runTest {
+        provider.stream { finish() }
+
+        val finished = runToEnd().finished()
+
+        assertEquals(AgentFinishReason.Completed, finished.reason)
+        assertEquals(1, provider.requests.size)
+    }
+
+    @Test
+    fun `a truncated step continues and merges into the same message`() = runTest {
+        provider.stream {
+            text("half")
+            finish("length")
+        }
+        provider.stream {
+            text(" and rest")
+            finish()
+        }
+
+        val events = runToEnd(
+            request(
+                continuation = ContinuationPolicy(
+                    maxContinuations = 3,
+                    triggers = setOf(ContinuationTrigger.TRUNCATED),
+                )
+            )
+        )
+
+        val finished = events.finished()
+        assertEquals(AgentFinishReason.Completed, finished.reason)
+        // 续写写回同一条助手消息：界面上是一个连续气泡，不是两条
+        assertEquals(listOf("half", " and rest"), finished.message.texts())
+        assertEquals(setOf(finished.message.id), events.messageIds())
+        assertEquals(listOf(1), events.filterIsInstance<AgentEvent.Continuing>().map { it.round })
+        assertEquals(2, provider.requests.size)
+    }
+
+    @Test
+    fun `an empty step is retried instead of ending the turn`() = runTest {
+        provider.stream { finish() }
+        provider.stream {
+            text("finally")
+            finish()
+        }
+
+        val finished = runToEnd(
+            request(
+                continuation = ContinuationPolicy(
+                    maxContinuations = 2,
+                    triggers = setOf(ContinuationTrigger.EMPTY),
+                )
+            )
+        ).finished()
+
+        assertEquals(listOf("finally"), finished.message.texts())
+        assertEquals(2, provider.requests.size)
+    }
+
+    @Test
+    fun `task mode keeps going until the done marker shows up`() = runTest {
+        provider.stream {
+            text("working on it")
+            finish()
+        }
+        provider.stream {
+            text("all set [DONE]")
+            finish()
+        }
+
+        val finished = runToEnd(
+            request(
+                continuation = ContinuationPolicy(
+                    maxContinuations = 5,
+                    triggers = setOf(ContinuationTrigger.UNFINISHED),
+                    doneMarkers = listOf("[DONE]"),
+                )
+            )
+        ).finished()
+
+        assertEquals(AgentFinishReason.Completed, finished.reason)
+        assertEquals(listOf("working on it", "all set [DONE]"), finished.message.texts())
+        assertEquals(2, provider.requests.size)
+    }
+
+    @Test
+    fun `the nudge goes to the model but never becomes part of the message`() = runTest {
+        provider.stream {
+            text("tick")
+            finish()
+        }
+        provider.stream {
+            text("tock")
+            finish()
+        }
+
+        val nudge = "keep going"
+        val finished = runToEnd(
+            request(
+                continuation = ContinuationPolicy(
+                    maxContinuations = 1,
+                    triggers = setOf(ContinuationTrigger.UNFINISHED),
+                    doneMarkers = emptyList(),
+                    nudge = nudge,
+                )
+            )
+        ).finished()
+
+        // 第二请求的最后一条是续写提示，用户气泡没有被塞进会话
+        assertEquals(nudge, provider.requests[1].messages.last().toText())
+        assertEquals(MessageRole.USER, provider.requests[1].messages.last().role)
+        assertEquals(listOf("tick", "tock"), finished.message.texts())
+    }
+
+    @Test
+    fun `continuation stops at the configured cap`() = runTest {
+        repeat(4) {
+            provider.stream {
+                text("more")
+                finish()
+            }
+        }
+
+        val events = runToEnd(
+            request(
+                continuation = ContinuationPolicy(
+                    maxContinuations = 2,
+                    triggers = setOf(ContinuationTrigger.UNFINISHED),
+                    doneMarkers = emptyList(),
+                )
+            )
+        )
+
+        assertEquals(2, events.filterIsInstance<AgentEvent.Continuing>().size)
+        // 第一次 + 两次续写
+        assertEquals(3, provider.requests.size)
+        assertEquals(AgentFinishReason.Completed, events.finished().reason)
+    }
+
+    @Test
+    fun `a step limit can be extended by continuation`() = runTest {
+        provider.stream {
+            toolCall("call-1", "search")
+            finish()
+        }
+        provider.stream {
+            text("done")
+            finish()
+        }
+
+        val finished = runToEnd(
+            request(
+                tools = listOf(tool("search")),
+                maxSteps = 1,
+                continuation = ContinuationPolicy(
+                    maxContinuations = 1,
+                    triggers = setOf(ContinuationTrigger.STEP_LIMIT),
+                ),
+            )
+        ).finished()
+
+        assertEquals(AgentFinishReason.Completed, finished.reason)
+        assertEquals(listOf("done"), finished.message.texts())
+        assertTrue(finished.message.tool("call-1").isExecuted)
+    }
+
+    @Test
+    fun `still empty at the cap leaves a fallback line instead of a blank bubble`() = runTest {
+        provider.stream { finish() }
+        provider.stream { finish() }
+
+        val finished = runToEnd(
+            request(
+                continuation = ContinuationPolicy(
+                    maxContinuations = 1,
+                    triggers = setOf(ContinuationTrigger.EMPTY),
+                    emptyFallback = "(nothing came back)",
+                )
+            )
+        ).finished()
+
+        assertEquals(listOf("(nothing came back)"), finished.message.texts())
+    }
+
+    @Test
+    fun `awaiting approval never gets a fallback line`() = runTest {
+        val tools = listOf(tool("write", needsApproval = true))
+        provider.stream {
+            toolCall("call-1", "write")
+            finish()
+        }
+
+        val finished = runToEnd(
+            request(
+                tools = tools,
+                continuation = ContinuationPolicy(
+                    maxContinuations = 3,
+                    triggers = setOf(ContinuationTrigger.EMPTY),
+                    emptyFallback = "(nothing came back)",
+                ),
+            )
+        ).finished()
+
+        assertEquals(AgentFinishReason.AwaitingApproval(setOf("call-1")), finished.reason)
+        assertTrue(finished.message.texts().isEmpty())
+    }
 }
 
 /** 按调用顺序依次返回预设的响应，并记录每次请求 */
@@ -566,8 +778,8 @@ private suspend fun FlowCollector<StreamChunk>.usage(prompt: Int, completion: In
     emit(StreamChunk.Usage(TokenUsage(promptTokens = prompt, completionTokens = completion)))
 }
 
-private suspend fun FlowCollector<StreamChunk>.finish() {
-    emit(StreamChunk.Finish(finishReason = "stop"))
+private suspend fun FlowCollector<StreamChunk>.finish(reason: String = "stop") {
+    emit(StreamChunk.Finish(finishReason = reason))
 }
 
 private fun tool(

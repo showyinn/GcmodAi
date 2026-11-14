@@ -1318,6 +1318,7 @@
   <string name="chat_generation_network_timeout">Connection timed out</string>
   <string name="chat_generation_network_unreachable">Unable to connect to server</string>
   <string name="chat_generation_network_disconnected">Network connection lost</string>
+  <string name="chat_generation_continuing">Task mode: continuing automatically (%1$d/%2$d)…</string>
   <string name="search_page_scope_current_assistant">Current Assistant</string>
   <string name="search_page_scope_all_assistants">All Assistants</string>
   <string name="chat_page_voice_title">Voice mode</string>
@@ -1795,6 +1796,16 @@
   <string name="setting_model_page_memory_model">Memory Consolidation Model</string>
   <string name="setting_model_page_memory_model_desc">Model used to organize conversations into long-term memory in the background; uses the fast model when not set</string>
   <string name="setting_model_page_memory_model_follow_fast">Same as fast model</string>
+  <string name="setting_model_page_task_mode">Task mode</string>
+  <string name="setting_model_page_task_mode_desc">Keep working until the task is actually done: empty replies, cut-off output and unfinished tasks continue automatically instead of stopping halfway</string>
+  <string name="setting_model_page_task_mode_header">Task mode &amp; stream guard</string>
+  <string name="setting_model_page_task_mode_enable">Auto-continue unfinished replies</string>
+  <string name="setting_model_page_task_mode_rounds">Max auto-continue rounds</string>
+  <string name="setting_model_page_task_mode_rounds_desc">Stops after this many rounds so a looping model cannot burn your quota</string>
+  <string name="setting_model_page_task_mode_marker">Done marker</string>
+  <string name="setting_model_page_task_mode_marker_desc">The reply is considered finished when it contains this text; leave empty to use the built-in markers</string>
+  <string name="setting_model_page_prompt_task_nudge">Task Mode Continuation</string>
+  <string name="setting_model_page_task_nudge_prompt_vars">Sent as a user message when the reply needs to continue; keep it short</string>
     <string name="assistant_page_local_tools_workspace_title">服务器工作区</string>
     <string name="assistant_page_local_tools_workspace_desc">让 AI 在你的 100MB 云工作区里写代码，并部署成公网网站</string>
     <string name="assistant_page_local_tools_ssh_title">SSH 远程服务器</string>
