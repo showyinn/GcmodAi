@@ -39,7 +39,6 @@ import com.gcmodai.app.data.remote.LeaderboardRepository
 import com.gcmodai.app.data.remote.SettingsProxyAuthenticator
 import com.gcmodai.app.data.remote.SettingsProxySelector
 import com.gcmodai.app.data.remote.SettingsSocks5Authenticator
-import com.gcmodai.app.data.remote.SponsorAPI
 import com.gcmodai.app.data.sync.BackupManager
 import com.gcmodai.app.data.sync.S3Sync
 import com.gcmodai.app.data.sync.webdav.WebDavSync
@@ -246,10 +245,6 @@ val dataSourceModule = module {
             })
             .build()
         client.also { SearchService.init(it, get()) }
-    }
-
-    single {
-        SponsorAPI.create(get())
     }
 
     single {

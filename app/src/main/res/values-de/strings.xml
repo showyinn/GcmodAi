@@ -306,10 +306,6 @@
   <string name="deep_thinking">Tiefes Denken</string>
   <string name="deep_thinking_seconds">%1$.1f Sekunden nachgedacht</string>
   <string name="delete">Löschen</string>
-  <string name="donate_page_afdian_desc">Für 🇨🇳 Nutzer</string>
-  <string name="donate_page_donation_methods">Spendenmethoden</string>
-  <string name="donate_page_kofi_desc">Für internationale Nutzer</string>
-  <string name="donate_page_sponsor_list">Sponsorenliste</string>
   <string name="extension_selector_lorebooks_empty">Keine Lorebooks verfügbar</string>
   <string name="extension_selector_mode_injections_empty">Keine Modus-Injektionen verfügbar</string>
   <string name="extension_selector_quick_messages_empty">Keine Schnellnachrichten verfügbar</string>
@@ -350,7 +346,6 @@
   <string name="imggen_page_cancel">Abbrechen</string>
   <string name="imggen_page_cancel_generation_message">Möchtest du die Bildgenerierung wirklich abbrechen?</string>
   <string name="imggen_page_cancel_generation_title">Generierung abbrechen</string>
-  <string name="donate_page_title">Spenden</string>
   <string name="edit">Bearbeiten</string>
   <string name="editing">Bearbeitung</string>
   <string name="emoji_picker_search_placeholder">Emojis suchen...</string>
@@ -815,8 +810,6 @@
   <string name="setting_page_preferences_network_auto_retry_desc">Modellanfragen bei Netzwerkfehlern bis zu 3-mal wiederholen.</string>
   <string name="setting_page_documentation">Dokumentation</string>
   <string name="setting_page_documentation_desc">Anweisungen zur App-Nutzung und Hilfedokumentation anzeigen</string>
-  <string name="setting_page_donate">Spenden</string>
-  <string name="setting_page_donate_desc">Wenn es dir gefällt, unterstütze die Arbeit des Autors</string>
   <string name="setting_page_dynamic_color">Dynamische Farben</string>
   <string name="setting_page_dynamic_color_desc">Erzeuge die Designfarben der App dynamisch aus deinem Hintergrundbild</string>
   <string name="setting_page_extensions">Erweiterungen</string>
