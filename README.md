@@ -13,7 +13,7 @@ AI 不只会给你一段代码，它会**把文件写进真实的工作区**，�
   <img alt="android" src="https://img.shields.io/badge/Android-8.0%2B-3DDC84">
   <img alt="kotlin" src="https://img.shields.io/badge/Kotlin-Compose-7F52FF">
   <img alt="license" src="https://img.shields.io/badge/License-AGPL--3.0-blue">
-  <img alt="version" src="https://img.shields.io/badge/Version-3.10.0-orange">
+  <img alt="version" src="https://img.shields.io/badge/Version-3.10.1-orange">
 </p>
 
 ---
@@ -481,6 +481,7 @@ netsh advfirewall firewall add rule name="GcmodAi Agent" dir=in action=allow pro
 
 | 版本 | 主要内容 |
 |---|---|
+| 3.10.1 | 修复加固产物被存进上传目录导致「加固包」里找不到；修正错误指引（存储管理不是本地文件浏览器）；加固页新增本机产物列表可分享删除；任务列表按钮改为刷新并自动滚到底 |
 | 3.10.0 | 修复加固页力度选择器点不动（只有外观无点击）；字符串加密改为规则选择器（预设+自定义）；新增 3 个 AI 可调用加固工具，AI 读 APK 特征推荐方案并让用户确认后再提交 |
 | 3.9.39 | 任务模式改用语义完成判定（标记 / 收束语 / 无进展 / 高重复），修掉「已完成仍续写」；接入 XopProtector 加固引擎（DEX 加密 / 壳 / PVM1+PVM2 / SO .text 加密 / RASP / 渠道号）；加固页重做为跟随系统主题的仪表盘；修两个服务端真实缺陷 |
 | 3.9.38 | 上游返回 HTML 网页时按瞬时故障重试（新增 UpstreamHtmlException）；任务模式单步重试上限 3→10 次，封顶 8 秒；五个 provider 全覆盖 |
