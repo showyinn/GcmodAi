@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.gcmodai.ui.toast.ToastType
 import me.rerere.hugeicons.HugeIcons
+import me.rerere.hugeicons.stroke.Shield01
 import me.rerere.hugeicons.stroke.Video01
 import me.rerere.hugeicons.stroke.Folder01
 import me.rerere.hugeicons.stroke.Computer
@@ -250,6 +251,12 @@ private fun AssistantLocalToolContent(
                 icon = HugeIcons.Video01,
                 title = R.string.assistant_page_local_tools_ffmpeg_title,
                 description = R.string.assistant_page_local_tools_ffmpeg_desc,
+            )
+            toolItem(
+                option = LocalToolOption.ApkHarden,
+                icon = HugeIcons.Shield01,
+                title = R.string.assistant_page_local_tools_harden_title,
+                description = R.string.assistant_page_local_tools_harden_desc,
             )
             toolItem(
                 option = LocalToolOption.PcControl,

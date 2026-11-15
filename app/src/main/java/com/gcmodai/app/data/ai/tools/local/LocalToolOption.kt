@@ -109,6 +109,17 @@ sealed class LocalToolOption {
     @SerialName("ffmpeg")
     data object Ffmpeg : LocalToolOption()
 
+    /**
+     * APK 加固：让 AI 分析 APK 特征、推荐加固方案、并在用户确认后提交任务。
+     *
+     * 为什么单独做成工具而不是只在页面里：加固参数有十几个，
+     * 用户通常说不清「我该选哪个档」。让 AI 读特征、讲理由、问用户，
+     * 比让用户对着五档按钮猜要靠谱。
+     */
+    @Serializable
+    @SerialName("apk_harden")
+    data object ApkHarden : LocalToolOption()
+
     @Serializable
     @SerialName("unknown")
     data object Unknown : LocalToolOption()
@@ -127,6 +138,7 @@ private val SERIAL_NAMES: Map<String, LocalToolOption> = listOf(
     "screen_time" to LocalToolOption.ScreenTime,
     "calendar" to LocalToolOption.Calendar,
     "chart_display" to LocalToolOption.ChartDisplay,
+    "apk_harden" to LocalToolOption.ApkHarden,
     "gcmodai_official" to LocalToolOption.GcmodAiOfficial,
     "ffmpeg" to LocalToolOption.Ffmpeg,
     "unknown" to LocalToolOption.Unknown,

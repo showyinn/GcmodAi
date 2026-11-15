@@ -416,15 +416,17 @@ fun HardenPage() {
                                     maxLines = 5,
                                     textStyle = MaterialTheme.typography.bodySmall.copy(fontFamily = HardenTheme.mono),
                                 )
-                                OutlinedTextField(
-                                    value = stringFogRules,
-                                    onValueChange = { stringFogRules = it },
-                                    label = { Text("字符串加密规则（每行一条）") },
-                                    supportingText = { Text("命中的类会把 const-string 明文改成运行时解密；留空=不加密") },
-                                    modifier = Modifier.fillMaxWidth(),
-                                    minLines = 2,
-                                    maxLines = 5,
-                                    textStyle = MaterialTheme.typography.bodySmall.copy(fontFamily = HardenTheme.mono),
+                                DashedDivider()
+                                // 字符串加密做成规则选择器：预设覆盖常见取舍，
+                                // 手改过的规则自动落到「自定义」，不会被预设覆盖掉
+                                LabeledLabel("字符串加密")
+                                StringFogSelector(
+                                    presets = StringFogPresets.ALL,
+                                    currentRules = stringFogRules.lines().map { it.trim() }.filter { it.isNotEmpty() },
+                                    onPickPreset = { preset ->
+                                        stringFogRules = preset.rules.joinToString("\n")
+                                    },
+                                    onEditCustom = { stringFogRules = it },
                                 )
                                 OutlinedTextField(
                                     value = soName,

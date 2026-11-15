@@ -1835,4 +1835,6 @@ mDNS 地址：使用 .local 主机名，同一网络中的其他设备可通过�
   <string name="tutorial_entry">使用教程</string>
   <string name="tutorial_entry_desc">全部功能说明与常见问题</string>
   <string name="chat_generation_upstream_html">上游返回的是网页而不是数据（网关维护页或拦截页）</string>
+  <string name="assistant_page_local_tools_harden_title">APK 加固</string>
+  <string name="assistant_page_local_tools_harden_desc">让 AI 分析 APK 特征、推荐加固方案、在用户确认后提交任务</string>
 </resources>
