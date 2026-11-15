@@ -46,6 +46,10 @@ internal class AgentLoop(
     // 否则前面步骤写过的内容会让空回复看起来像有内容
     private var stepPartsFrom = 0
 
+    // 上一步结束时的可见正文：用来判断续写有没有带来新增内容，
+    // 没进展就不要继续（这是「写完了还在续」的兜底闸门之一）
+    private var previousStepText: String? = null
+
     init {
         val last = request.messages.lastOrNull()
         if (last?.role == MessageRole.ASSISTANT) {
@@ -134,13 +138,13 @@ internal class AgentLoop(
         ContinuationTrigger.EMPTY -> !hasVisibleContent(current?.parts?.drop(stepPartsFrom))
         // 被输出上限截断，后面肯定还有内容
         ContinuationTrigger.TRUNCATED -> isTruncated(lastFinishReason)
-        // 有完成标记却一直没看到，说明模型自己也认为没干完。
-        // 没配标记时按「永远还没干完」处理，交给次数上限收口
-        ContinuationTrigger.UNFINISHED -> {
-            val markers = policy.doneMarkers.filter { it.isNotBlank() }
-            val text = current?.toText().orEmpty()
-            markers.isEmpty() || markers.none { it in text }
-        }
+        // 任务没做完。判据不能只看完成标记：模型自然收尾时不会输出 [DONE]，
+        // 只看标记会导致「明明写完了还在继续」。交给 CompletionDetector 综合判断。
+        ContinuationTrigger.UNFINISHED -> !CompletionDetector.isComplete(
+            text = current?.toText().orEmpty(),
+            markers = policy.doneMarkers,
+            previousText = previousStepText,
+        )
         ContinuationTrigger.STEP_LIMIT -> true
     }
 
@@ -184,6 +188,9 @@ internal class AgentLoop(
             generate(step.messages, params, base)
         }
         stepPartsFrom = base.parts.size
+        // 记下这一步之前的正文，供下一次完成判定比较「有没有新增进展」。
+        // 必须在 update 之前取，此时 message 还是上一步的结果
+        previousStepText = current?.toText()
         update(hooks.finishStep(generated, newPartsFrom = base.parts.size).copy(finishedAt = now()))
     }
 

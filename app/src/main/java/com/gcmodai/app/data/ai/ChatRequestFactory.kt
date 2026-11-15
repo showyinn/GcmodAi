@@ -330,6 +330,11 @@ internal fun Settings.retryPolicy(): RetryPolicy = when {
  *
  * 这里刻意只做映射、不带默认值判断：开关和次数都在 [Settings] 里，
  * 循环本身不读设置，测试可以只构造策略。
+ *
+ * 3.9.39 起严格模式**不再等于「必须写完成标记」**：判定交给 CompletionDetector，
+ * 它同时看显式标记、结尾收束语、以及这一轮有没有新增进展。
+ * 之前只看标记，导致模型自然收尾（写「以上就是全部内容，如需调整请告诉我」）
+ * 也被当成没干完，一路续写到轮数上限——这就是「明明完成了还在继续」。
  */
 internal fun Settings.continuationPolicy(): ContinuationPolicy {
     if (!taskModeEnabled) return ContinuationPolicy.NONE
@@ -342,8 +347,8 @@ internal fun Settings.continuationPolicy(): ContinuationPolicy {
     }
     return ContinuationPolicy(
         maxContinuations = taskModeMaxContinuations,
-        // 严格模式才盯「有没有完成标记」；否则只管客观上没说完的三种情况。
-        // 不加这个区分的话，普通闲聊也会被一直续写到模型写出标记，白烧额度
+        // 严格模式才盯「任务整体有没有做完」；否则只管客观上没说完的三种情况。
+        // 不加这个区分的话，普通闲聊也会被一直续写，白烧额度
         triggers = if (taskModeStrict) {
             ContinuationPolicy.DEFAULT_TRIGGERS
         } else {
