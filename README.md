@@ -13,7 +13,7 @@ AI 不只会给你一段代码，它会**把文件写进真实的工作区**，�
   <img alt="android" src="https://img.shields.io/badge/Android-8.0%2B-3DDC84">
   <img alt="kotlin" src="https://img.shields.io/badge/Kotlin-Compose-7F52FF">
   <img alt="license" src="https://img.shields.io/badge/License-AGPL--3.0-blue">
-  <img alt="version" src="https://img.shields.io/badge/Version-3.9.38-orange">
+  <img alt="version" src="https://img.shields.io/badge/Version-3.9.39-orange">
 </p>
 
 ---
@@ -481,6 +481,7 @@ netsh advfirewall firewall add rule name="GcmodAi Agent" dir=in action=allow pro
 
 | 版本 | 主要内容 |
 |---|---|
+| 3.9.39 | 任务模式改用语义完成判定（标记 / 收束语 / 无进展 / 高重复），修掉「已完成仍续写」；接入 XopProtector 加固引擎（DEX 加密 / 壳 / PVM1+PVM2 / SO .text 加密 / RASP / 渠道号）；加固页重做为跟随系统主题的仪表盘；修两个服务端真实缺陷 |
 | 3.9.38 | 上游返回 HTML 网页时按瞬时故障重试（新增 UpstreamHtmlException）；任务模式单步重试上限 3→10 次，封顶 8 秒；五个 provider 全覆盖 |
 | 3.9.37 | 任务模式主入口搬到聊天页 + 号面板；附件面板改 4 列；新增可热更新的「使用教程」页（8 章全覆盖 + 搜索） |
 | 3.9.36 | 任务模式拆成「默认只处理断流/截断/步数耗尽」与「严格模式按完成标记续写」两档，避免普通聊天被过度续写 |
