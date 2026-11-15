@@ -1,6 +1,15 @@
 package com.gcmodai.app.ui.pages.harden
 
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.RepeatMode
+import com.gcmodai.app.R
+import androidx.compose.ui.res.stringResource
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.runtime.remember
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
@@ -405,10 +414,13 @@ internal fun MetricTile(
 }
 
 /**
- * 等级选择：一到五档的力度条，比下拉框直观。
+ * 等级选择：一排可点的力度格。
  *
  * 加固力度是「兼容性 ↔ 防护强度」的连续权衡，
- * 用一排可点的格子 + 当前档位说明，用户能立刻理解代价。
+ * 用一排格子 + 当前档位说明，用户能立刻理解代价。
+ *
+ * 注意：整块必须挂 clickable。之前只有背景和边框，没有点击响应——
+ * 表现就是「点了没反应」，看起来像按钮其实是死的。
  */
 @Composable
 internal fun LevelSelector(
@@ -420,45 +432,58 @@ internal fun LevelSelector(
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             levels.forEachIndexed { i, level ->
                 val active = i == selected
-                val color = if (active) scheme.primary else scheme.onSurfaceVariant
+                val container by animateColorAsState(
+                    targetValue = if (active) {
+                        scheme.primary.copy(alpha = 0.13f)
+                    } else {
+                        scheme.surfaceContainerHigh.copy(alpha = 0.55f)
+                    },
+                    label = "levelBg",
+                )
+                val stroke by animateColorAsState(
+                    targetValue = if (active) scheme.primary else scheme.outlineVariant.copy(alpha = 0.65f),
+                    label = "levelBorder",
+                )
+                val contentColor = if (active) scheme.primary else scheme.onSurfaceVariant
+
                 Column(
                     modifier = Modifier
                         .weight(1f)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(
-                            if (active) scheme.primary.copy(alpha = 0.12f) else Color.Transparent
-                        )
-                        .border(
-                            1.dp,
-                            if (active) scheme.primary.copy(alpha = 0.5f) else scheme.outlineVariant.copy(alpha = 0.5f),
-                            RoundedCornerShape(12.dp),
-                        )
-                        .then(
-                            Modifier.padding(vertical = 9.dp)
-                        ),
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(container)
+                        .border(if (active) 2.dp else 1.dp, stroke, RoundedCornerShape(16.dp))
+                        // 整块可点，且带水波纹：没有这一行，格子就是死的
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = LocalIndication.current,
+                        ) { onSelect(i) }
+                        .padding(vertical = 14.dp, horizontal = 4.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    // 力度格：用几条竖线表示强度
-                    Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                    // 力度指示：几条竖杠，越多越强（与截图里的 ｜ ｜｜ ｜｜｜ 一致）
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(2.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
                         repeat(i + 1) {
                             Box(
                                 Modifier
-                                    .size(width = 3.dp, height = 10.dp)
-                                    .clip(RoundedCornerShape(1.dp))
-                                    .background(color)
+                                    .size(width = 3.5.dp, height = 14.dp)
+                                    .clip(RoundedCornerShape(1.5.dp))
+                                    .background(contentColor)
                             )
                         }
                     }
                     Text(
                         text = level.label,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = color,
-                        fontWeight = if (active) FontWeight.SemiBold else FontWeight.Normal,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = contentColor,
+                        fontWeight = if (active) FontWeight.Bold else FontWeight.Normal,
                     )
                 }
             }
@@ -474,6 +499,93 @@ internal fun LevelSelector(
 }
 
 internal data class Level(val label: String, val hint: String)
+
+/**
+ * 字符串加密规则选择器：一排预设 + 可在「自定义」下直接编辑。
+ *
+ * 交互约定：
+ * - 点预设 → 立刻把对应规则写进 stringFogRules，选中态高亮
+ * - 规则被手改后不再匹配任何预设 → 自动落到「自定义」并展开输入框，
+ *   避免「我改了规则但显示还是某个预设」的错位
+ */
+@Composable
+internal fun StringFogSelector(
+    presets: List<StringFogPreset>,
+    currentRules: List<String>,
+    onPickPreset: (StringFogPreset) -> Unit,
+    onEditCustom: (String) -> Unit,
+) {
+    val scheme = MaterialTheme.colorScheme
+    val active = StringFogPresets.match(currentRules) ?: StringFogPresets.byKey("custom")
+    val isCustom = active.key == "custom"
+
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        // 五档在窄屏放不下一行，用可换行的流式布局
+        FlowRow(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            presets.forEach { preset ->
+                val selected = preset.key == active.key
+                val container by animateColorAsState(
+                    if (selected) {
+                        scheme.primary.copy(alpha = 0.13f)
+                    } else {
+                        scheme.surfaceContainerHigh.copy(alpha = 0.55f)
+                    },
+                    label = "fogBg",
+                )
+                val stroke by animateColorAsState(
+                    if (selected) scheme.primary else scheme.outlineVariant.copy(alpha = 0.65f),
+                    label = "fogBorder",
+                )
+                Surface(
+                    onClick = { onPickPreset(preset) },
+                    shape = RoundedCornerShape(12.dp),
+                    color = container,
+                    border = BorderStroke(if (selected) 2.dp else 1.dp, stroke),
+                ) {
+                    Text(
+                        text = preset.label,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = if (selected) scheme.primary else scheme.onSurfaceVariant,
+                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 9.dp),
+                    )
+                }
+            }
+        }
+
+        Text(
+            text = active.hint,
+            style = MaterialTheme.typography.bodySmall,
+            color = scheme.onSurfaceVariant,
+        )
+
+        if (isCustom) {
+            OutlinedTextField(
+                value = currentRules.joinToString("\n"),
+                onValueChange = onEditCustom,
+                label = { Text("加密规则（每行一条）") },
+                supportingText = { Text("+com.foo.* 包含；-com.foo.Skip 排除；留空=不加密") },
+                modifier = Modifier.fillMaxWidth(),
+                minLines = 3,
+                maxLines = 8,
+                textStyle = MaterialTheme.typography.bodySmall.copy(fontFamily = HardenTheme.mono),
+            )
+        } else {
+            // 非自定义时把实际生效的规则摊出来，避免「选了但不知道到底加密了啥」
+            Text(
+                text = currentRules.joinToString("  ·  "),
+                style = MaterialTheme.typography.labelSmall,
+                fontFamily = HardenTheme.mono,
+                color = scheme.primary,
+            )
+        }
+    }
+}
+
 
 /** 日志行：等宽，带时间戳位置，长行自动换 */
 @Composable

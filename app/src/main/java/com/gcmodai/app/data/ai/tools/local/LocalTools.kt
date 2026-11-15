@@ -19,6 +19,8 @@ class LocalTools(
     private val pcAgentRepository: com.gcmodai.app.data.agent.PcAgentRepository? = null,
     /** 音视频解析：服务器端 ffmpeg（工具名 ffmpeg） */
     private val mediaProbeClient: com.gcmodai.app.data.media.MediaProbeClient? = null,
+    /** 加固客户端：让 AI 分析 APK 并提交加固任务 */
+    private val hardenClient: com.gcmodai.app.data.harden.HardenClient? = null,
 ) {
     val javascriptTool by lazy { buildJavascriptTool() }
 
@@ -70,6 +72,9 @@ class LocalTools(
         }
         if (enabled.contains(LocalToolOption.Ffmpeg)) {
             ffmpegTool?.let { tools.add(it) }
+        }
+        if (enabled.contains(LocalToolOption.ApkHarden)) {
+            hardenClient?.let { tools.addAll(HardenTools.all(context, it)) }
         }
         if (enabled.contains(LocalToolOption.ChartDisplay)) {
             tools.add(chartDisplayTool)

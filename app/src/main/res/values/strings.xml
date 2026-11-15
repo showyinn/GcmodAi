@@ -1833,4 +1833,6 @@
   <string name="tutorial_entry">Tutorial</string>
   <string name="tutorial_entry_desc">Every feature explained, plus common problems</string>
   <string name="chat_generation_upstream_html">The provider returned a web page instead of data (gateway maintenance or block page)</string>
+  <string name="assistant_page_local_tools_harden_title">APK Hardening</string>
+  <string name="assistant_page_local_tools_harden_desc">Let the AI profile an APK, recommend a hardening plan, and submit it once you confirm</string>
 </resources>
