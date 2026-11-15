@@ -64,6 +64,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.net.toUri
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import me.rerere.hugeicons.HugeIcons
@@ -80,7 +81,9 @@ import me.rerere.hugeicons.stroke.Settings02
 import me.rerere.hugeicons.stroke.Shield01
 import me.rerere.hugeicons.stroke.SourceCode
 import me.rerere.hugeicons.stroke.TaskDone01
+import com.gcmodai.app.data.files.FileFolders
 import com.gcmodai.app.data.files.FilesManager
+import com.gcmodai.app.data.db.entity.ManagedFileEntity
 import com.gcmodai.app.data.harden.HardenClient
 import com.gcmodai.app.ui.components.nav.BackButton
 import com.gcmodai.app.ui.context.LocalToaster
@@ -111,6 +114,7 @@ fun HardenPage() {
     val hardenClient: HardenClient = koinInject()
     val filesManager: FilesManager = koinInject()
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+    val listState = androidx.compose.foundation.lazy.rememberLazyListState()
 
     // ---- 输入 ----
     var apkName by remember { mutableStateOf<String?>(null) }
@@ -163,6 +167,8 @@ fun HardenPage() {
     var logs by remember { mutableStateOf<List<String>>(emptyList()) }
     var resultBytes by remember { mutableStateOf<ByteArray?>(null) }
     var savedInfo by remember { mutableStateOf<String?>(null) }
+    // 本机已保存的加固产物：直接读 filesDir/harden 的索引
+    var savedFiles by remember { mutableStateOf<List<ManagedFileEntity>>(emptyList()) }
     var classes by remember { mutableStateOf<List<HardenClient.DexClass>>(emptyList()) }
     var selectedObf by remember { mutableStateOf<Set<String>>(emptySet()) }
     var selectedDex by remember { mutableStateOf<Set<String>>(emptySet()) }
@@ -217,6 +223,11 @@ fun HardenPage() {
         jobsLoading = false
     }
 
+    // 进页面就把已保存的加固产物读出来，避免用户以为「存了但不见了」
+    LaunchedEffect(Unit) {
+        savedFiles = runCatching { filesManager.list(FileFolders.HARDEN) }.getOrDefault(emptyList())
+    }
+
     LaunchedEffect(jobId) {
         val id = jobId ?: return@LaunchedEffect
         while (true) {
@@ -252,10 +263,13 @@ fun HardenPage() {
                     byteArrays = listOf(bytes),
                     displayName = (apkName?.removeSuffix(".apk") ?: "app") + "-hardened.apk",
                     mimeType = "application/vnd.android.package-archive",
+                    folder = FileFolders.HARDEN,
                 ).firstOrNull()
             }.onSuccess {
-                savedInfo = "已保存到「存储管理 → 加固包」"
-                toaster.show("已保存到「存储管理 → 加固包」", type = ToastType.Success)
+                savedInfo = "已保存到本机「加固包」目录"
+                // 刷新页内的产物列表，让用户当场看到刚存的文件
+                savedFiles = runCatching { filesManager.list(FileFolders.HARDEN) }.getOrDefault(emptyList())
+                toaster.show("已保存到本机「加固包」目录", type = ToastType.Success)
             }.onFailure {
                 toaster.show("本地保存失败：${it.message}", type = ToastType.Error)
             }
@@ -326,8 +340,18 @@ fun HardenPage() {
                 colors = CustomColors.topBarColors,
                 actions = {
                     IconButton(onClick = {
-                        showHistory = !showHistory
-                        if (showHistory) scope.launch { refreshJobs() }
+                        val opening = !showHistory
+                        showHistory = opening
+                        if (opening) {
+                            // 任务列表在页面最底部：只切换状态不滚动，用户会以为按钮没反应。
+                            // 这里刷新数据并滚到底，点一下就能看到东西。
+                            scope.launch {
+                                refreshJobs()
+                                runCatching {
+                                    listState.animateScrollToItem(listState.layoutInfo.totalItemsCount)
+                                }
+                            }
+                        }
                     }) {
                         Icon(HugeIcons.TaskDone01, contentDescription = "任务列表")
                     }
@@ -338,6 +362,7 @@ fun HardenPage() {
     ) { innerPadding ->
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
+            state = listState,
             contentPadding = PaddingValues(
                 start = 16.dp,
                 top = innerPadding.calculateTopPadding() + 8.dp,
@@ -809,6 +834,56 @@ fun HardenPage() {
                 }
             }
 
+            // ---- 本机加固产物 ----
+            // 「存储管理」页是代码产物托管（上传到服务器的文件），不是本地文件浏览器。
+            // 加固结果落在 filesDir/harden，所以必须在这里列出来，否则用户无处可找。
+            if (savedFiles.isNotEmpty()) {
+                item {
+                    GlassCard(accent = HardenTheme.ok()) {
+                        SectionHeader(
+                            title = "本机加固包",
+                            subtitle = "共 ${savedFiles.size} 个 · 点条目可分享，长按删除",
+                            icon = HugeIcons.CheckmarkBadge01,
+                        )
+                        savedFiles.take(10).forEach { f ->
+                            SavedFileRow(
+                                file = f,
+                                onShare = {
+                                    scope.launch {
+                                        runCatching {
+                                            val uri = filesManager.getFile(f).toUri()
+                                            val intent = android.content.Intent(
+                                                android.content.Intent.ACTION_SEND
+                                            ).apply {
+                                                type = f.mimeType
+                                                putExtra(android.content.Intent.EXTRA_STREAM, uri)
+                                                addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                            }
+                                            context.startActivity(
+                                                android.content.Intent.createChooser(intent, "分享加固包")
+                                                    .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                                            )
+                                        }.onFailure {
+                                            toaster.show("分享失败：${it.message}", type = ToastType.Error)
+                                        }
+                                    }
+                                },
+                                onDelete = {
+                                    scope.launch {
+                                        runCatching {
+                                            filesManager.getFile(f).delete()
+                                            savedFiles = filesManager.list(FileFolders.HARDEN)
+                                        }.onSuccess {
+                                            toaster.show("已删除", type = ToastType.Success)
+                                        }
+                                    }
+                                },
+                            )
+                        }
+                    }
+                }
+            }
+
             item {
                 Text(
                     "零留存：源包反编译后立即删除，结果只存内存，下载一次即清除。",
@@ -1189,6 +1264,54 @@ private fun StageTimeline(
                 state = state,
                 isLast = i == stages.lastIndex,
             )
+        }
+    }
+}
+
+/**
+ * 本机加固产物的一行：显示名字与体积，点一下分享，右侧按钮删除。
+ *
+ * 为什么把入口放在加固页里：加固结果落在 filesDir/harden，
+ * 而「存储管理」页管的是上传到服务器的代码产物，两者不是一回事。
+ */
+@Composable
+private fun SavedFileRow(
+    file: ManagedFileEntity,
+    onShare: () -> Unit,
+    onDelete: () -> Unit,
+) {
+    val scheme = MaterialTheme.colorScheme
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .clickable { onShare() }
+            .padding(vertical = 8.dp, horizontal = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Icon(
+            HugeIcons.Download04,
+            contentDescription = null,
+            tint = HardenTheme.ok(),
+            modifier = Modifier.size(18.dp),
+        )
+        Column(Modifier.weight(1f)) {
+            Text(
+                text = file.displayName,
+                style = MaterialTheme.typography.bodySmall,
+                fontFamily = HardenTheme.mono,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = "%.1f MB".format(file.sizeBytes / 1048576.0),
+                style = MaterialTheme.typography.labelSmall,
+                color = scheme.onSurfaceVariant,
+            )
+        }
+        TextButton(onClick = onDelete) {
+            Text("删除", style = MaterialTheme.typography.labelSmall, color = HardenTheme.danger())
         }
     }
 }

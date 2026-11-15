@@ -148,9 +148,16 @@ class FilesManager(
         byteArrays: List<ByteArray>,
         displayName: String = "image.png",
         mimeType: String = "image/png",
+        /**
+         * 落盘目录。默认 UPLOAD（聊天附件），加固产物必须传 HARDEN。
+         *
+         * 之前这里把目录写死成 UPLOAD，于是加固结果被存进上传目录，
+         * 而「存储管理 → 加固包」读的是 HARDEN 目录 —— 用户在那里当然找不到文件。
+         */
+        folder: String = FileFolders.UPLOAD,
     ): List<Uri> {
         val newUris = mutableListOf<Uri>()
-        val dir = context.filesDir.resolve(FileFolders.UPLOAD)
+        val dir = context.filesDir.resolve(folder)
         if (!dir.exists()) {
             dir.mkdirs()
         }
@@ -165,7 +172,7 @@ class FilesManager(
                 outputStream.write(byteArray)
             }
             trackManagedFile(
-                folder = FileFolders.UPLOAD,
+                folder = folder,
                 file = file,
                 displayName = displayName,
                 mimeType = mimeType

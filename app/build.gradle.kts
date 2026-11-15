@@ -26,8 +26,8 @@ android {
         applicationId = "com.gcmodai.app"
         minSdk = 26
         targetSdk = 37
-        versionCode = 275
-        versionName = "3.10.0"
+        versionCode = 276
+        versionName = "3.10.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
