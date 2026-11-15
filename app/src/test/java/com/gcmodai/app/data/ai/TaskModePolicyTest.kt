@@ -68,6 +68,34 @@ class TaskModePolicyTest {
         assertTrue("[DONE]" in policy.doneMarkers)
     }
 
+    // ---- 「已完成仍续写」的回归 ----
+
+    @Test
+    fun `strict mode no longer requires a literal done marker`() {
+        val policy = Settings(
+            taskModeEnabled = true,
+            taskModeStrict = true,
+            taskModeMaxContinuations = 8,
+        ).continuationPolicy()
+
+        // 判据交给 CompletionDetector，它还会看结尾收束语与有无新增进展；
+        // 只看标记会让自然收尾的回复被判定成没干完
+        assertTrue(ContinuationTrigger.UNFINISHED in policy.triggers)
+        assertTrue(policy.doneMarkers.isNotEmpty())
+    }
+
+    @Test
+    fun `non strict mode never judges by completion at all`() {
+        val policy = Settings(
+            taskModeEnabled = true,
+            taskModeStrict = false,
+            taskModeMaxContinuations = 8,
+        ).continuationPolicy()
+
+        // 普通聊天只处理断流/截断/步数耗尽，不参与「任务有没有做完」的判断
+        assertFalse(ContinuationTrigger.UNFINISHED in policy.triggers)
+    }
+
     @Test
     fun `an empty marker falls back to the built-in markers`() {
         val policy = Settings(taskModeDoneMarker = "   ").continuationPolicy()
